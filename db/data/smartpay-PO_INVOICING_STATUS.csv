@@ -1,0 +1,5 @@
+code,name
+OPEN,Open
+PARTIALLY_INVOICED,Partially Invoiced
+INVOICED,Invoiced
+CLOSED,Closed

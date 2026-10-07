@@ -1,0 +1,22 @@
+{
+  "scopes": [
+    {
+      "name": "$XSAPPNAME.BUYER",
+      "description": "BUYER"
+    },
+    {
+      "name": "$XSAPPNAME.AP_MANAGER",
+      "description": "AP_MANAGER"
+    },
+    {
+      "name": "$XSAPPNAME.ADMIN",
+      "description": "ADMIN"
+    },
+    {
+      "name": "$XSAPPNAME.SUPPLIER_USER",
+      "description": "SUPPLIER_USER"
+    }
+  ],
+  "attributes": [],
+  "role-templates": []
+}

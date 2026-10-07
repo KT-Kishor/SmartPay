@@ -1,0 +1,20 @@
+<core:FragmentDefinition xmlns="sap.m" xmlns:core="sap.ui.core"
+  xmlns:sf="sap.ui.comp.smartform" xmlns:sfi="sap.ui.comp.smartfield">
+  <Dialog title="Line Item" contentWidth="34rem">
+    <sf:SmartForm entityType="POLines" editable="true" editTogglable="false">
+      <sf:layout><sf:Layout columnsM="1" columnsL="1" columnsXL="1" labelSpanS="12" labelSpanM="4" labelSpanL="4" labelSpanXL="4"/></sf:layout>
+      <sf:Group>
+        <sf:GroupElement><sfi:SmartField value="{materialCode}"/></sf:GroupElement>
+        <sf:GroupElement><sfi:SmartField value="{description}"/></sf:GroupElement>
+        <sf:GroupElement><sfi:SmartField value="{orderedQuantity}"/></sf:GroupElement>
+        <sf:GroupElement><sfi:SmartField value="{uom_code}"/></sf:GroupElement>
+        <sf:GroupElement><sfi:SmartField value="{unitPrice}"/></sf:GroupElement>
+        <sf:GroupElement><sfi:SmartField value="{taxRate}"/></sf:GroupElement>
+        <sf:GroupElement><sfi:SmartField value="{deliveryDate}"/></sf:GroupElement>
+        <sf:GroupElement><sfi:SmartField value="{plant_ID}"/></sf:GroupElement>
+      </sf:Group>
+    </sf:SmartForm>
+    <beginButton><Button text="Save" type="Emphasized" press=".onSaveLine"/></beginButton>
+    <endButton><Button text="Cancel" press=".onCancelLine"/></endButton>
+  </Dialog>
+</core:FragmentDefinition>

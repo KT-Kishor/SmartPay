@@ -1,0 +1,217 @@
+<mvc:View controllerName="smartpay.invoice.smartpay.controller.ManagePO"
+  xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m" xmlns:core="sap.ui.core" xmlns:f="sap.ui.layout.form"
+  xmlns:l="sap.ui.layout" xmlns:cg="sap.ui.layout.cssgrid"
+  xmlns:sfi="sap.ui.comp.smartfield" xmlns:st="sap.ui.comp.smarttable">
+  <Page showHeader="false">
+    <content>
+
+      <!-- title row -->
+      <OverflowToolbar design="Transparent">
+        <VBox class="sapUiSmallMarginTop">
+          <Title text="Manage PO" level="H3" titleStyle="H3"/>
+          <Text text="Create purchase orders, manage header and line item details, and send POs to suppliers."/>
+        </VBox>
+        <ToolbarSpacer/>
+        <ObjectStatus text="{ui>/chipText}" state="{ui>/chipState}" inverted="true" icon="sap-icon://status-positive"/>
+        <Button text="Save Draft" press=".onSaveDraft" enabled="{= !${ui>/locked}}"/>
+          <Button id="messagePopoverBtn" icon="sap-icon://message-popup" type="Emphasized"
+          visible="{= ${message>/}.length > 0 }"
+          text="{= ${message>/}.length }" press=".onMessagesPress"/>
+        <Button text="Preview" press=".onPreview" enabled="{ui>/saved}"/>
+        <Button text="Send to Supplier" type="Transparent" press=".onSend"
+          enabled="{= !${ui>/locked} &amp;&amp; ${ui>/saved}}"/>
+      </OverflowToolbar>
+
+      <!-- PO Header Details: 4 equal columns, label above field -->
+      <Panel class="sapUiResponsiveMargin" width="auto">
+        <headerToolbar>
+          <OverflowToolbar>
+            <Title text="PO Header Details"/>
+            <core:Icon src="sap-icon://hint"/>
+            <ToolbarSpacer/>
+            <Button text="Edit" type="Transparent" press=".onToggleEdit" visible="{= !${ui>/locked}}"/>
+          </OverflowToolbar>
+        </headerToolbar>
+
+             <cg:CSSGrid
+    width="auto"
+    gridTemplateColumns="repeat(4, minmax(0, 1fr))"
+    gridGap="0.70rem 0.9rem"
+    class="sapUiSmallMarginBeginEnd">
+          <!-- row 1 -->
+          <VBox>
+            <Label text="PO Number"/>
+            <Input editable="false" value="{= ${poNumber} || ${ui>/poNumberPreview} }"/>
+          </VBox>
+          <VBox>
+            <sfi:SmartLabel labelFor="fSupplier"/>
+            <sfi:SmartField id="fSupplier" value="{supplier_ID}" contextEditable="{ui>/edit}"
+              innerControlsCreated=".onSupplierInner"/>
+          </VBox>
+          <VBox>
+            <Label text="Supplier ID"/>
+            <Input editable="false" value="{supplierExtId}"/>
+          </VBox>
+          <VBox>
+            <sfi:SmartLabel labelFor="fCompany"/>
+            <sfi:SmartField id="fCompany" value="{company_ID}" contextEditable="{ui>/edit}"/>
+          </VBox>
+
+          <!-- row 2 -->
+          <VBox>
+            <sfi:SmartLabel labelFor="fOrg"/>
+            <sfi:SmartField id="fOrg" value="{purchasingOrg_ID}" contextEditable="{ui>/edit}"/>
+          </VBox>
+          <VBox>
+            <sfi:SmartLabel labelFor="fPoDate"/>
+            <sfi:SmartField id="fPoDate" value="{poDate}" contextEditable="{ui>/edit}"/>
+          </VBox>
+          <VBox>
+            <sfi:SmartLabel labelFor="fCurrency"/>
+            <sfi:SmartField id="fCurrency" value="{currency_code}" contextEditable="{ui>/edit}"/>
+          </VBox>
+          <VBox>
+            <sfi:SmartLabel labelFor="fTerms"/>
+            <sfi:SmartField id="fTerms" value="{paymentTerm_code}" contextEditable="{ui>/edit}"/>
+          </VBox>
+
+          <!-- row 3 -->
+          <VBox>
+            <sfi:SmartLabel labelFor="fDelivery"/>
+            <sfi:SmartField id="fDelivery" value="{deliveryDate}" contextEditable="{ui>/edit}"/>
+          </VBox>
+          <VBox>
+            <sfi:SmartLabel labelFor="fShipTo"/>
+            <sfi:SmartField id="fShipTo" value="{shipTo_ID}" contextEditable="{ui>/edit}"/>
+          </VBox>
+          <VBox>
+            <sfi:SmartLabel labelFor="fBuyer"/>
+            <sfi:SmartField id="fBuyer" value="{buyer_ID}" contextEditable="{ui>/edit}"/>
+          </VBox>
+          <VBox>
+            <sfi:SmartLabel labelFor="fPoType"/>
+            <sfi:SmartField id="fPoType" value="{poType_code}" contextEditable="{ui>/edit}"/>
+          </VBox>
+             </cg:CSSGrid>
+      </Panel>
+
+      <!-- Line Items -->
+      <Panel class="sapUiResponsiveMargin" width="auto">
+        <st:SmartTable id="lineTable" entitySet="POLines" tableBindingPath="lines" tableType="ResponsiveTable"
+          enableAutoBinding="true" useVariantManagement="false" useTablePersonalisation="false" showRowCount="false"
+          requestAtLeastFields="ID,po_ID,taxRate,lineNumber">
+          <st:customToolbar>
+            <OverflowToolbar design="Transparent">
+              <Title text="Line Items ({ui>/lineCount})"/>
+              <core:Icon src="sap-icon://hint"/>
+              <ToolbarSpacer/>
+              <Button text="Add Line Item" type="Transparent" press=".onAddLine" enabled="{= !${ui>/locked}}"/>
+              <Button text="Import" type="Transparent" press=".onImport" enabled="{= !${ui>/locked}}"/>
+              <Button icon="sap-icon://overflow" type="Transparent" press=".onOverflow"/>
+            </OverflowToolbar>
+          </st:customToolbar>
+          <Table updateFinished=".onLinesUpdated">
+            <columns>
+              <Column hAlign="End">
+                <customData><core:CustomData key="p13nData" value='\{"columnKey":"qty","leadingProperty":"orderedQuantity","sortProperty":"orderedQuantity","columnIndex":"3"}'/></customData>
+                <Text text="Qty"/>
+              </Column>
+              <Column hAlign="End">
+                <customData><core:CustomData key="p13nData" value='\{"columnKey":"price","leadingProperty":"unitPrice","sortProperty":"unitPrice","columnIndex":"5"}'/></customData>
+                <Text text="Unit Price"/>
+              </Column>
+              <Column hAlign="End">
+                <customData><core:CustomData key="p13nData" value='\{"columnKey":"amount","leadingProperty":"lineValue","sortProperty":"lineValue","columnIndex":"8"}'/></customData>
+                <Text text="Amount"/>
+              </Column>
+              <Column hAlign="End">
+                <customData><core:CustomData key="p13nData" value='\{"columnKey":"actions","leadingProperty":"ID","columnIndex":"9"}'/></customData>
+                <Text text="Actions"/>
+              </Column>
+            </columns>
+            <items>
+              <!-- row navigation: click a line row -> View PO -->
+              <ColumnListItem>
+                <cells>
+                  <Text text="{path:'orderedQuantity', formatter:'.formatter.qty'}"/>
+                  <Text text="{parts:[{path:'unitPrice'},{path:'ui>/currency'}], formatter:'.formatter.money2'}"/>
+                  <Text text="{parts:[{path:'lineValue'},{path:'ui>/currency'}], formatter:'.formatter.money2'}"/>
+                  <HBox justifyContent="End">
+                    <Button icon="sap-icon://edit" type="Transparent" press=".onEditLine" enabled="{= !${ui>/locked}}"/>
+                    <Button icon="sap-icon://delete" type="Transparent" press=".onDeleteLine" enabled="{= !${ui>/locked}}"/>
+                  </HBox>
+                </cells>
+              </ColumnListItem>
+            </items>
+          </Table>
+        </st:SmartTable>
+        <FlexBox justifyContent="End" alignItems="Center" wrap="Wrap" renderType="Bare"
+          class="sapUiSmallMarginTop">
+          <VBox alignItems="End" class="sapUiSmallMarginEnd sapUiTinyMarginBottom">
+            <Label text="Subtotal"/>
+            <ObjectNumber
+              number="{parts:[{path:'subtotalAmount'},{path:'currency_code'}], formatter:'.formatter.money2'}"/>
+          </VBox>
+
+          <VBox alignItems="End" class="sapUiSmallMarginEnd sapUiTinyMarginBottom">
+            <Label
+              text="{parts:[{path:'subtotalAmount'},{path:'taxAmount'}], formatter:'.formatter.taxLabel'}"/>
+            <ObjectNumber
+              number="{parts:[{path:'taxAmount'},{path:'currency_code'}], formatter:'.formatter.money2'}"/>
+          </VBox>
+
+          <VBox alignItems="End" class="sapUiSmallMarginEnd sapUiTinyMarginBottom">
+            <Label text="Total PO Value"/>
+            <ObjectNumber emphasized="true"
+              number="{parts:[{path:'totalOrderValue'},{path:'currency_code'}], formatter:'.formatter.money2'}"/>
+          </VBox>
+        </FlexBox>
+      </Panel>
+
+      <!-- Supplier Delivery / E2E Flow + Supplier Communication -->
+      <HBox alignItems="Stretch" class="sapUiResponsiveMargin" width="auto">
+        <Panel width="100%" class="sapUiSmallMarginEnd">
+          <layoutData><FlexItemData growFactor="3" baseSize="0"/></layoutData>
+          <headerToolbar>
+            <OverflowToolbar><Title text="Supplier Delivery / E2E Flow"/><core:Icon src="sap-icon://hint"/></OverflowToolbar>
+          </headerToolbar>
+          <HBox items="{flow>/steps}" width="100%" justifyContent="SpaceAround">
+            <VBox alignItems="Center">
+              <HBox alignItems="Center">
+                <Avatar displaySize="XS" displayShape="Circle"
+                  src="{= ${flow>done} ? 'sap-icon://accept' : '' }" initials="{flow>n}"
+                  backgroundColor="{= ${flow>done} ? 'Accent6' : 'Placeholder' }"/>
+                <core:Icon src="sap-icon://slim-arrow-right" class="sapUiTinyMarginBegin" visible="{= ${flow>n} !== 4}"/>
+              </HBox>
+              <Title text="{flow>n}. {flow>title}" level="H6" class="sapUiTinyMarginTop"/>
+              <Text text="{flow>date}"/>
+              <Text text="{flow>time}"/>
+            </VBox>
+          </HBox>
+        </Panel>
+
+        <Panel width="100%">
+          <layoutData><FlexItemData growFactor="2" baseSize="0"/></layoutData>
+          <headerToolbar>
+            <OverflowToolbar><Title text="Supplier Communication"/><core:Icon src="sap-icon://hint"/></OverflowToolbar>
+          </headerToolbar>
+          <MessageStrip type="Success" showIcon="true" enableFormattedText="true"
+            text="&lt;strong>PO sent successfully to supplier.&lt;/strong>&lt;br>The purchase order has been transmitted via Supplier Portal."
+            visible="{= ${flow>/comm/status} === 'SENT'}"/>
+          <MessageStrip type="Error" showIcon="true" text="{flow>/comm/error}"
+            visible="{= ${flow>/comm/status} === 'FAILED'}"/>
+          <f:SimpleForm editable="false" layout="ColumnLayout" columnsM="1" columnsL="1" columnsXL="1">
+            <Label text="Delivery Channel"/><Text text="{flow>/comm/channel}"/>
+            <Label text="Sent To"/><Text text="{flow>/comm/sentTo}"/>
+            <Label text="Last Sent"/><Text text="{flow>/comm/sentAt}"/>
+            <Label text="Transmission Status"/>
+            <ObjectStatus text="{flow>/comm/statusText}"
+              state="{= ${flow>/comm/status} === 'SENT' ? 'Success' : (${flow>/comm/status} === 'FAILED' ? 'Error' : 'Warning') }"
+              icon="sap-icon://circle-task-2"/>
+          </f:SimpleForm>
+        </Panel>
+      </HBox>
+
+    </content>
+  </Page>
+</mvc:View>

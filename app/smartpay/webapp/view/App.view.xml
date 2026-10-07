@@ -1,0 +1,51 @@
+<mvc:View controllerName="smartpay.invoice.smartpay.controller.App" displayBlock="true" 
+  xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m" xmlns:core="sap.ui.core" xmlns:tnt="sap.tnt"> 
+  <tnt:ToolPage id="toolPage"> 
+    <tnt:header> 
+      <tnt:ToolHeader class="spHeader"> 
+        <Text text="SAP" class="spLogo"/> 
+        <VBox class="sapUiTinyMarginBegin"> 
+          <Text text="SmartPay" class="spBrand"/> 
+          <Text text="Smarter invoicing. Faster Payments." class="spTag"/> 
+        </VBox> 
+        <ToolbarSpacer/> 
+        <SearchField class="spSearch" placeholder="Search in SmartPay (POs, Invoices, Suppliers...)"/> 
+        <ToolbarSpacer/> 
+        <Button icon="sap-icon://sys-help" type="Transparent"/> 
+        <Button icon="sap-icon://bell" type="Transparent"> 
+          <customData><BadgeCustomData key="badge" value="3"/></customData> 
+        </Button> 
+        <Avatar initials="{shell>/initials}" displaySize="S" class="spAvatar"/> 
+        <VBox> 
+          <Text text="{shell>/userName}" class="spUserName"/> 
+          <Text text="{shell>/role}" class="spUserRole"/> 
+        </VBox> 
+        <core:Icon src="sap-icon://navigation-down-arrow" size=".75rem"/> 
+      </tnt:ToolHeader> 
+    </tnt:header> 
+ 
+    <tnt:sideContent> 
+      <tnt:SideNavigation 
+        class="spSide" 
+        selectedKey="{shell>/navKey}" 
+        itemSelect=".onNavSelect"> 
+        <tnt:NavigationList> 
+          <tnt:NavigationListItem text="Dashboard" icon="sap-icon://home" key="dash"/> 
+          <tnt:NavigationListItem text="Invoice Exceptions" icon="sap-icon://alert" key="exc" visible="{shell>/customer}"/> 
+          <tnt:NavigationListItem text="Invoice Inbox" icon="sap-icon://inbox" key="inbox" visible="{shell>/supplier}"/> 
+          <tnt:NavigationListItem text="Upload Invoices" icon="sap-icon://upload-to-cloud" key="upload" visible="{shell>/supplier}"/> 
+          <tnt:NavigationListItem text="Manage PO" icon="sap-icon://document-text" key="managePO" visible="{shell>/customer}"/> 
+          <tnt:NavigationListItem text="View PO" icon="sap-icon://sales-order" key="viewPO" visible="{shell>/supplier}"/> 
+          <tnt:NavigationListItem text="Audit History" icon="sap-icon://history" key="aud" visible="{shell>/customer}"/> 
+        </tnt:NavigationList> 
+        <tnt:fixedItem> 
+          <tnt:NavigationList> 
+            <tnt:NavigationListItem text="{shell>/company}" icon="sap-icon://building" key="co"/> 
+          </tnt:NavigationList> 
+        </tnt:fixedItem> 
+      </tnt:SideNavigation> 
+    </tnt:sideContent> 
+ 
+    <tnt:mainContents><NavContainer id="pageContainer"/></tnt:mainContents> 
+  </tnt:ToolPage> 
+</mvc:View>

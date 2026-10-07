@@ -1,0 +1,215 @@
+@host = http://localhost:4004
+@admin = Basic YWRtaW46eA==
+@john = Basic am9objp4
+@supplier = Basic c3VwcGxpZXI6eA==
+@seedSupplier = 50000000-0000-0000-0000-000000000001
+
+###############  PART 1 : RANDOM MASTER DATA (admin)  ###############
+
+### 1. Company
+# @name createCompany
+POST {{host}}/odata/v4/admin/Companies
+Authorization: {{admin}}
+Content-Type: application/json
+
+{
+  "companyCode": "CMP{{$randomInt 1000 9999}}",
+  "companyName": "Random Corporation {{$randomInt 1000 9999}}",
+  "defaultCurrency": "USD",
+  "status": "ACTIVE"
+}
+
+### 2. Purchasing org
+# @name createOrg
+POST {{host}}/odata/v4/admin/PurchasingOrgs
+Authorization: {{admin}}
+Content-Type: application/json
+
+{
+  "company_ID": "{{createCompany.response.body.$.ID}}",
+  "orgCode": "US{{$randomInt 10 99}}",
+  "orgName": "Random Purchasing Org",
+  "status": "ACTIVE"
+}
+
+### 3. Supplier (random, ACTIVE, with PO email)
+# @name createSupplier
+POST {{host}}/odata/v4/admin/Suppliers
+Authorization: {{admin}}
+Content-Type: application/json
+
+{
+  "sourceSystem": "SMARTPAY",
+  "sourceSupplierId": "SUP-{{$randomInt 3000 9999}}",
+  "legalName": "Random Supplier {{$randomInt 1000 9999}} Ltd",
+  "taxId": "TAX{{$randomInt 100000 999999}}",
+  "status": "ACTIVE",
+  "defaultCurrency": "USD",
+  "poEmail": "po{{$randomInt 1000 9999}}@random-supplier.com",
+  "updatedFromSourceAt": "{{$datetime iso8601}}"
+}
+
+### 4. Payment term
+POST {{host}}/odata/v4/admin/PaymentTerms
+Authorization: {{admin}}
+Content-Type: application/json
+
+{ "code": "NET{{$randomInt 100 999}}", "description": "Net {{$randomInt 10 90}}", "days": 30, "status": "ACTIVE" }
+
+### 5. UOM
+POST {{host}}/odata/v4/admin/Uoms
+Authorization: {{admin}}
+Content-Type: application/json
+
+{ "code": "U{{$randomInt 1000 9999}}", "description": "Random unit" }
+
+### 6. Ship-To location
+# @name createShipTo
+POST {{host}}/odata/v4/admin/Locations
+Authorization: {{admin}}
+Content-Type: application/json
+
+{
+  "company_ID": "{{createCompany.response.body.$.ID}}",
+  "locationCode": "ST{{$randomInt 1000 9999}}",
+  "locationName": "Random Distribution Center {{$randomInt 1 99}}",
+  "locationType": "SHIP_TO",
+  "addressLine1": "{{$randomInt 1 999}} Industrial Ave",
+  "city": "Houston", "state": "TX", "postalCode": "77001", "countryCode": "US", "status": "ACTIVE"
+}
+
+### 7. Plant location
+# @name createPlant
+POST {{host}}/odata/v4/admin/Locations
+Authorization: {{admin}}
+Content-Type: application/json
+
+{
+  "company_ID": "{{createCompany.response.body.$.ID}}",
+  "locationCode": "PL{{$randomInt 1000 9999}}",
+  "locationName": "Random Plant {{$randomInt 1 99}}",
+  "locationType": "PLANT",
+  "addressLine1": "{{$randomInt 1 999}} Plant Road",
+  "city": "Houston", "state": "TX", "postalCode": "77002", "countryCode": "US", "status": "ACTIVE"
+}
+
+### 8. Material
+POST {{host}}/odata/v4/admin/Materials
+Authorization: {{admin}}
+Content-Type: application/json
+
+{
+  "company_ID": "{{createCompany.response.body.$.ID}}",
+  "materialCode": "MAT-{{$randomInt 50000 99999}}",
+  "description": "Random Material {{$randomInt 1 999}}",
+  "itemType": "MATERIAL",
+  "defaultUom_code": "EA",
+  "standardPrice": 25.5,
+  "status": "ACTIVE"
+}
+
+### 9. Buyer user
+# @name createBuyer
+POST {{host}}/odata/v4/admin/Users
+Authorization: {{admin}}
+Content-Type: application/json
+
+{
+  "userName": "Random Buyer {{$randomInt 1 999}}",
+  "email": "buyer{{$randomInt 100000 999999}}@random-corp.com",
+  "phone": "+1 555 {{$randomInt 1000 9999}}",
+  "roleCode": "BUYER",
+  "company_ID": "{{createCompany.response.body.$.ID}}",
+  "status": "ACTIVE"
+}
+
+###############  PART 2 : RANDOM PO (john, through business logic)  ###############
+# Uses the seeded supplier so the "supplier" login can see the PO on View PO.
+
+### 10. PO header (PO number, status, totals are set by the server)
+# @name createPO
+POST {{host}}/odata/v4/manage-po/PurchaseOrders
+Authorization: {{john}}
+Content-Type: application/json
+
+{
+  "poType_code": "STANDARD",
+  "supplier_ID": "{{@seedSupplier}}",
+  "company_ID": "{{createCompany.response.body.$.ID}}",
+  "purchasingOrg_ID": "{{createOrg.response.body.$.ID}}",
+  "poDate": "{{$datetime 'YYYY-MM-DD'}}",
+  "deliveryDate": "{{$datetime 'YYYY-MM-DD' 10 d}}",
+  "currency_code": "USD",
+  "paymentTerm_code": "NET30",
+  "shipTo_ID": "{{createShipTo.response.body.$.ID}}",
+  "buyer_ID": "{{createBuyer.response.body.$.ID}}"
+}
+
+### 11. Line 1
+POST {{host}}/odata/v4/manage-po/POLines
+Authorization: {{john}}
+Content-Type: application/json
+
+{
+  "po_ID": "{{createPO.response.body.$.ID}}",
+  "materialCode": "MAT-{{$randomInt 10000 99999}}",
+  "description": "Random item {{$randomInt 1 999}}",
+  "orderedQuantity": {{$randomInt 1 100}},
+  "uom_code": "EA",
+  "unitPrice": {{$randomInt 5 500}},
+  "deliveryDate": "{{$datetime 'YYYY-MM-DD' 12 d}}",
+  "plant_ID": "{{createPlant.response.body.$.ID}}",
+  "taxRate": 8
+}
+
+### 12. Line 2
+POST {{host}}/odata/v4/manage-po/POLines
+Authorization: {{john}}
+Content-Type: application/json
+
+{
+  "po_ID": "{{createPO.response.body.$.ID}}",
+  "materialCode": "SRV-{{$randomInt 10000 99999}}",
+  "description": "Random service {{$randomInt 1 999}}",
+  "orderedQuantity": 1,
+  "uom_code": "AU",
+  "unitPrice": {{$randomInt 100 2000}},
+  "deliveryDate": "{{$datetime 'YYYY-MM-DD' 14 d}}",
+  "plant_ID": "{{createPlant.response.body.$.ID}}",
+  "taxRate": 8
+}
+
+### 13. Check totals (recalculated by the server)
+GET {{host}}/odata/v4/manage-po/PurchaseOrders({{createPO.response.body.$.ID}})?$expand=lines
+Authorization: {{john}}
+
+### 14. Preview (moves to INTERNAL_REVIEW)
+POST {{host}}/odata/v4/manage-po/previewPO
+Authorization: {{john}}
+Content-Type: application/json
+
+{ "poId": "{{createPO.response.body.$.ID}}" }
+
+### 15. Send to supplier
+POST {{host}}/odata/v4/manage-po/sendToSupplier
+Authorization: {{john}}
+Content-Type: application/json
+
+{ "poId": "{{createPO.response.body.$.ID}}" }
+
+### 16. Tracker history
+GET {{host}}/odata/v4/manage-po/POStatusHistory?$filter=po_ID eq {{createPO.response.body.$.ID}}&$orderby=statusAt
+Authorization: {{john}}
+
+###############  PART 3 : SUPPLIER SIDE  ###############
+
+### 17. View PO list as supplier
+GET {{host}}/odata/v4/view-po/SupplierPOs?$orderby=poDate desc&$expand=lines
+Authorization: {{supplier}}
+
+### 18. Acknowledge
+POST {{host}}/odata/v4/view-po/acknowledge
+Authorization: {{supplier}}
+Content-Type: application/json
+
+{ "poId": "{{createPO.response.body.$.ID}}" }

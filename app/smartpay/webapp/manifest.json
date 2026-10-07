@@ -1,0 +1,99 @@
+{
+  "_version": "1.89.0",
+  "sap.app": {
+    "id": "smartpay.invoice.smartpay",
+    "type": "application",
+    "i18n": "i18n/i18n.properties",
+    "applicationVersion": { "version": "0.0.1" },
+    "title": "{{appTitle}}",
+    "description": "{{appDescription}}",
+    "resources": "resources.json",
+    "sourceTemplate": {
+      "id": "@sap/generator-fiori:basic",
+      "version": "1.33.0",
+      "toolsId": "d1fe5765-2ba5-4fc0-b16e-bdfd9f224fd6"
+    },
+    "dataSources": {
+      "mainService": {
+        "uri": "/odata/v2/manage-po/",
+        "type": "OData",
+        "settings": { "annotations": [], "odataVersion": "2.0" }
+      },
+      "viewService": {
+        "uri": "/odata/v2/view-po/",
+        "type": "OData",
+        "settings": { "annotations": [], "odataVersion": "2.0" }
+      }
+    },
+    "crossNavigation": {
+      "inbounds": {
+        "SmartPay-manageInvoices": {
+          "semanticObject": "SmartPay",
+          "action": "manageInvoices",
+          "title": "{{SmartPay-manageInvoices.flpTitle}}",
+          "signature": { "parameters": {}, "additionalParameters": "allowed" }
+        }
+      }
+    }
+  },
+  "sap.ui": {
+    "technology": "UI5",
+    "icons": { "icon": "", "favIcon": "", "phone": "", "phone@2": "", "tablet": "", "tablet@2": "" },
+    "deviceTypes": { "desktop": true, "tablet": true, "phone": true }
+  },
+  "sap.ui5": {
+    "flexEnabled": false,
+    "dependencies": {
+      "minUI5Version": "1.120.0",
+      "libs": {
+        "sap.m": {}, "sap.ui.core": {}, "sap.f": {}, "sap.tnt": {},
+        "sap.ui.layout": {}, "sap.ui.comp": {}
+      }
+    },
+    "contentDensities": { "compact": true, "cozy": true },
+    "models": {
+      "i18n": {
+        "type": "sap.ui.model.resource.ResourceModel",
+        "settings": { "bundleName": "smartpay.invoice.smartpay.i18n.i18n" }
+      },
+      "": {
+        "dataSource": "mainService",
+        "preload": true,
+        "settings": { "defaultBindingMode": "TwoWay", "defaultCountMode": "Inline" }
+      },
+      "viewService": {
+        "dataSource": "viewService",
+        "preload": true,
+        "settings": { "defaultBindingMode": "OneWay", "defaultCountMode": "Inline" }
+      }
+    },
+    "resources": { "css": [ { "uri": "css/style.css" } ] },
+    "routing": {
+      "config": {
+        "routerClass": "sap.m.routing.Router",
+        "controlAggregation": "pages",
+        "controlId": "pageContainer",
+        "transition": "slide",
+        "type": "View",
+        "viewType": "XML",
+        "path": "smartpay.invoice.smartpay.view",
+        "async": true
+      },
+     "routes": [
+    { "name": "home",     "pattern": "",                 "target": "viewPO" },
+    { "name": "managePO", "pattern": "manage-po/:poId:", "target": "managePO" },
+    { "name": "viewPO",   "pattern": "view-po:?query:", "target": "viewPO" }
+],
+"targets": {
+    "managePO": { "id": "managePO", "name": "ManagePO" },
+    "viewPO":   { "id": "viewPO",   "name": "ViewPO" }
+}
+    },
+    "rootView": {
+      "viewName": "smartpay.invoice.smartpay.view.App",
+      "type": "XML",
+      "id": "App",
+      "async": true
+    }
+  }
+}

@@ -1,0 +1,80 @@
+<mvc:View
+    controllerName="smartpay.invoice.smartpay.controller.ViewPO"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:sfb="sap.ui.comp.smartfilterbar"
+    xmlns:st="sap.ui.comp.smarttable">
+  <Page showHeader="false">
+    <content>
+
+      <OverflowToolbar design="Transparent">
+        <VBox class="sapUiSmallMarginTop">
+          <Title text="View PO" level="H3" titleStyle="H3"/>
+          <Text text="Review purchase orders, delivery dates, and line item details before invoicing."/>
+        </VBox>
+        <ToolbarSpacer/>
+        <Text text="{ui>/now}"/>
+        <Button icon="sap-icon://refresh" press=".onRefresh"/>
+      </OverflowToolbar>
+
+      <Panel class="sapUiResponsiveMargin" width="auto">
+        <sfb:SmartFilterBar id="smartFilterBar" entitySet="SupplierPOs" enableBasicSearch="true" useToolbar="false"
+          filterContainerWidth="11rem" showGoOnFB="true" showClearOnFB="true" considerAnalyticalParameters="false"
+          initialized=".onFilterInit" clear=".onClear">
+          <sfb:controlConfiguration>
+            <sfb:ControlConfiguration key="poNumber" label="PO Number" index="0" visibleInAdvancedArea="true" filterType="multiple"/>
+            <sfb:ControlConfiguration key="company_ID" label="Customer" index="1" visibleInAdvancedArea="true" filterType="multiple"/>
+            <sfb:ControlConfiguration key="invoicingStatus" label="Status" index="2" visibleInAdvancedArea="true" filterType="multiple"/>
+            <sfb:ControlConfiguration key="deliveryDate" label="Delivery Date" index="3" visibleInAdvancedArea="true" filterType="interval"/>
+          </sfb:controlConfiguration>
+        </sfb:SmartFilterBar>
+      </Panel>
+
+      <Panel class="sapUiResponsiveMargin" width="auto">
+        <st:SmartTable id="poTable" entitySet="SupplierPOs" smartFilterId="smartFilterBar" tableType="ResponsiveTable"
+          enableAutoBinding="true" useVariantManagement="false" useTablePersonalisation="false" showRowCount="false"
+          requestAtLeastFields="ID,invoicingStatus,poStatus,currency_code,totalOrderValue"
+          beforeRebindTable=".onBeforeRebind">
+          <st:customToolbar>
+            <OverflowToolbar design="Transparent">
+              <Title text="Purchase Orders Received" level="H4" titleStyle="H4"/>
+              <ToolbarSpacer/>
+              <Text text="{ui>/countText}"/>
+              <Button text="Create"  type="Transparent" press=".onCreate"/>
+            </OverflowToolbar>
+          </st:customToolbar>
+          <Table mode="None" growing="true" growingThreshold="20"
+                 updateFinished=".onUpdateFinished">
+            <columns>
+              <Column>
+                <customData><core:CustomData key="p13nData" value='\{"columnKey":"amount","leadingProperty":"totalOrderValue","sortProperty":"totalOrderValue","columnIndex":"4"}'/></customData>
+                <Text text="Amount"/>
+              </Column>
+              <Column>
+                <customData><core:CustomData key="p13nData" value='\{"columnKey":"status","leadingProperty":"invoicingStatus","sortProperty":"invoicingStatus","columnIndex":"5"}'/></customData>
+                <Text text="Status"/>
+              </Column>
+              <Column>
+                <customData><core:CustomData key="p13nData" value='\{"columnKey":"action","leadingProperty":"ID","columnIndex":"6"}'/></customData>
+                <Text text="Action"/>
+              </Column>
+            </columns>
+            <items>
+              <ColumnListItem type="Navigation" press=".onRowPress">
+                <cells>
+                  <Text text="{parts:[{path:'totalOrderValue'},{path:'currency_code'}], formatter:'.formatter.money0'}"/>
+                  <ObjectStatus inverted="true"
+                    text="{path:'invoicingStatus', formatter:'.formatter.statusText'}"
+                    state="{path:'invoicingStatus', formatter:'.formatter.statusState'}"/>
+                  <Link text="View Details →" press=".onViewDetails"/>
+                </cells>
+              </ColumnListItem>
+            </items>
+          </Table>
+        </st:SmartTable>
+      </Panel>
+
+    </content>
+  </Page>
+</mvc:View>
