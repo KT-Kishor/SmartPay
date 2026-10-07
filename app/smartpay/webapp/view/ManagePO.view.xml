@@ -1,28 +1,43 @@
 <mvc:View controllerName="smartpay.invoice.smartpay.controller.ManagePO"
   xmlns:mvc="sap.ui.core.mvc" xmlns="sap.m" xmlns:core="sap.ui.core" xmlns:f="sap.ui.layout.form"
-  xmlns:l="sap.ui.layout" xmlns:cg="sap.ui.layout.cssgrid"
+  xmlns:cg="sap.ui.layout.cssgrid"
   xmlns:sfi="sap.ui.comp.smartfield" xmlns:st="sap.ui.comp.smarttable">
-  <Page showHeader="false">
+  <Page showHeader="false" enableScrolling="true">
     <content>
 
-      <!-- title row -->
-      <OverflowToolbar design="Transparent">
-        <VBox class="sapUiSmallMarginTop">
-          <Title text="Manage PO" level="H3" titleStyle="H3"/>
+      <!-- Title row: title block and actions wrap onto two lines on narrow screens -->
+      <FlexBox wrap="Wrap" alignItems="Center" justifyContent="SpaceBetween" renderType="Div"
+        class="sapUiSmallMarginBeginEnd sapUiSmallMarginTop">
+        <VBox class="sapUiTinyMarginBottom">
+          <layoutData><FlexItemData growFactor="1" baseSize="16rem"/></layoutData>
+          <Title text="Manage PO" level="H3" titleStyle="H3" wrapping="true"/>
           <Text text="Create purchase orders, manage header and line item details, and send POs to suppliers."/>
         </VBox>
-        <ToolbarSpacer/>
-        <ObjectStatus text="{ui>/chipText}" state="{ui>/chipState}" inverted="true" icon="sap-icon://status-positive"/>
-        <Button text="Save Draft" press=".onSaveDraft" enabled="{= !${ui>/locked}}"/>
-          <Button id="messagePopoverBtn" icon="sap-icon://message-popup" type="Emphasized"
-          visible="{= ${message>/}.length > 0 }"
-          text="{= ${message>/}.length }" press=".onMessagesPress"/>
-        <Button text="Preview" press=".onPreview" enabled="{ui>/saved}"/>
-        <Button text="Send to Supplier" type="Transparent" press=".onSend"
-          enabled="{= !${ui>/locked} &amp;&amp; ${ui>/saved}}"/>
-      </OverflowToolbar>
 
-      <!-- PO Header Details: 4 equal columns, label above field -->
+        <OverflowToolbar design="Transparent" width="auto" class="sapUiNoContentPadding">
+          <layoutData><FlexItemData growFactor="0" shrinkFactor="1" minWidth="0"/></layoutData>
+          <ObjectStatus text="{ui>/chipText}" state="{ui>/chipState}" inverted="true" icon="sap-icon://status-positive">
+            <layoutData><OverflowToolbarLayoutData priority="NeverOverflow"/></layoutData>
+          </ObjectStatus>
+          <Button id="saveDraftBtn" text="Save Draft" press=".onSaveDraft" enabled="{= !${ui>/locked}}">
+            <layoutData><OverflowToolbarLayoutData priority="NeverOverflow"/></layoutData>
+          </Button>
+          <Button id="messagePopoverBtn" icon="sap-icon://message-popup" type="Emphasized"
+            visible="{= ${message>/}.length > 0 }"
+            text="{= ${message>/}.length }" press=".onMessagesPress">
+            <layoutData><OverflowToolbarLayoutData priority="High"/></layoutData>
+          </Button>
+          <Button text="Preview" press=".onPreview" enabled="{ui>/saved}">
+            <layoutData><OverflowToolbarLayoutData priority="Low"/></layoutData>
+          </Button>
+          <Button text="Send to Supplier" type="Transparent" press=".onSend"
+            enabled="{= !${ui>/locked} &amp;&amp; ${ui>/saved}}">
+            <layoutData><OverflowToolbarLayoutData priority="Low"/></layoutData>
+          </Button>
+        </OverflowToolbar>
+      </FlexBox>
+
+      <!-- PO Header Details: columns reflow automatically (1 column on phone, up to 4 on desktop) -->
       <Panel class="sapUiResponsiveMargin" width="auto">
         <headerToolbar>
           <OverflowToolbar>
@@ -33,12 +48,12 @@
           </OverflowToolbar>
         </headerToolbar>
 
-             <cg:CSSGrid
-    width="auto"
-    gridTemplateColumns="repeat(4, minmax(0, 1fr))"
-    gridGap="0.70rem 0.9rem"
-    class="sapUiSmallMarginBeginEnd">
-          <!-- row 1 -->
+        <cg:CSSGrid
+          width="auto"
+          gridTemplateColumns="repeat(auto-fill, minmax(min(100%, 14rem), 1fr))"
+          gridGap="0.75rem 1rem"
+          class="sapUiSmallMarginBeginEnd">
+
           <VBox>
             <Label text="PO Number"/>
             <Input editable="false" value="{= ${poNumber} || ${ui>/poNumberPreview} }"/>
@@ -57,7 +72,6 @@
             <sfi:SmartField id="fCompany" value="{company_ID}" contextEditable="{ui>/edit}"/>
           </VBox>
 
-          <!-- row 2 -->
           <VBox>
             <sfi:SmartLabel labelFor="fOrg"/>
             <sfi:SmartField id="fOrg" value="{purchasingOrg_ID}" contextEditable="{ui>/edit}"/>
@@ -75,7 +89,6 @@
             <sfi:SmartField id="fTerms" value="{paymentTerm_code}" contextEditable="{ui>/edit}"/>
           </VBox>
 
-          <!-- row 3 -->
           <VBox>
             <sfi:SmartLabel labelFor="fDelivery"/>
             <sfi:SmartField id="fDelivery" value="{deliveryDate}" contextEditable="{ui>/edit}"/>
@@ -92,108 +105,150 @@
             <sfi:SmartLabel labelFor="fPoType"/>
             <sfi:SmartField id="fPoType" value="{poType_code}" contextEditable="{ui>/edit}"/>
           </VBox>
-             </cg:CSSGrid>
+        </cg:CSSGrid>
       </Panel>
 
       <!-- Line Items -->
-     <!-- Line Items -->
-<Panel class="sapUiResponsiveMargin" width="auto">
-  <OverflowToolbar design="Transparent">
-    <Title text="Line Items ({ui>/lineCount})"/>
-    <core:Icon src="sap-icon://hint"/>
-    <ToolbarSpacer/>
-    <Button text="Add Line Item" type="Transparent" press=".onAddLine" enabled="{= !${ui>/locked}}"/>
-    <Button text="Import" type="Transparent" press=".onImport" enabled="{= !${ui>/locked}}"/>
-    <Button icon="sap-icon://overflow" type="Transparent" press=".onOverflow"/>
-  </OverflowToolbar>
+      <Panel class="sapUiResponsiveMargin" width="auto">
+        <OverflowToolbar design="Transparent">
+          <Title text="Line Items ({ui>/lineCount})"/>
+          <core:Icon src="sap-icon://hint"/>
+          <ToolbarSpacer/>
+          <Button text="Add Line Item"  type="Transparent" press=".onAddLine"
+            enabled="{= !${ui>/locked}}">
+            <layoutData><OverflowToolbarLayoutData priority="NeverOverflow"/></layoutData>
+          </Button>
+          <Button text="Import" type="Transparent" press=".onImport" enabled="{= !${ui>/locked}}">
+            <layoutData><OverflowToolbarLayoutData priority="Low"/></layoutData>
+          </Button>
+          <Button icon="sap-icon://overflow" type="Transparent" press=".onOverflow">
+            <layoutData><OverflowToolbarLayoutData priority="Low"/></layoutData>
+          </Button>
+        </OverflowToolbar>
 
-  <!-- NEW (unsaved) PO: lines held locally -->
-  <Table id="draftLineTable" items="{draft>/rows}" visible="{ui>/isNew}" popinLayout="GridSmall"
-         noDataText="No line items yet. Click Add Line Item.">
-    <columns>
-      <Column hAlign="End" width="4rem"><Text text="Line"/></Column>
-      <Column minScreenWidth="Tablet" demandPopin="true"><Text text="Material / Service"/></Column>
-      <Column minScreenWidth="Tablet" demandPopin="true"><Text text="Description"/></Column>
-      <Column hAlign="End"><Text text="Qty"/></Column>
-      <Column minScreenWidth="Tablet" demandPopin="true"><Text text="UOM"/></Column>
-      <Column hAlign="End" minScreenWidth="Tablet" demandPopin="true"><Text text="Unit Price"/></Column>
-      <Column minScreenWidth="Desktop" demandPopin="true"><Text text="Delivery Date"/></Column>
-      <Column minScreenWidth="Desktop" demandPopin="true"><Text text="Plant / Location"/></Column>
-      <Column hAlign="End"><Text text="Amount"/></Column>
-      <Column hAlign="End"><Text text="Actions"/></Column>
-    </columns>
-    <items>
-      <ColumnListItem>
-        <cells>
-          <Text text="{draft>lineNumber}"/>
-          <Text text="{draft>materialCode}"/>
-          <Text text="{draft>description}"/>
-          <Text text="{path:'draft>orderedQuantity', formatter:'.formatter.qty'}"/>
-          <Text text="{draft>uom}"/>
-          <Text text="{parts:[{path:'draft>unitPrice'},{path:'ui>/currency'}], formatter:'.formatter.money2'}"/>
-          <Text text="{draft>deliveryDate}"/>
-          <Text text="{draft>plant}"/>
-          <Text text="{parts:[{path:'draft>lineValue'},{path:'ui>/currency'}], formatter:'.formatter.money2'}"/>
-          <HBox justifyContent="End">
-            <Button icon="sap-icon://edit" type="Transparent" press=".onEditDraftLine"/>
-            <Button icon="sap-icon://delete" type="Transparent" press=".onDeleteDraftLine"/>
-          </HBox>
-        </cells>
-      </ColumnListItem>
-    </items>
-  </Table>
+        <!-- NEW (unsaved) PO: lines held locally -->
+        <Table id="draftLineTable" items="{draft>/rows}" visible="{ui>/isNew}"
+          popinLayout="GridSmall" contextualWidth="Auto"
+          noDataText="No line items yet. Click Add Line Item.">
+          <columns>
+            <Column importance="High" hAlign="End" width="4rem"><Text text="Line"/></Column>
+            <Column importance="High" minScreenWidth="Tablet" demandPopin="true"><Text text="Material / Service"/></Column>
+            <Column importance="Medium" minScreenWidth="Tablet" demandPopin="true"><Text text="Description"/></Column>
+            <Column importance="High" hAlign="End"><Text text="Qty"/></Column>
+            <Column importance="Low" minScreenWidth="Desktop" demandPopin="true"><Text text="UOM"/></Column>
+            <Column importance="Medium" hAlign="End" minScreenWidth="Tablet" demandPopin="true"><Text text="Unit Price"/></Column>
+            <Column importance="Low" minScreenWidth="Desktop" demandPopin="true"><Text text="Delivery Date"/></Column>
+            <Column importance="Low" minScreenWidth="Desktop" demandPopin="true"><Text text="Plant / Location"/></Column>
+            <Column importance="High" hAlign="End"><Text text="Amount"/></Column>
+            <Column importance="High" hAlign="End" width="6rem"><Text text="Actions"/></Column>
+          </columns>
+          <items>
+            <ColumnListItem>
+              <cells>
+                <Text text="{draft>lineNumber}"/>
+                <Text text="{draft>materialCode}"/>
+                <Text text="{draft>description}"/>
+                <Text text="{path:'draft>orderedQuantity', formatter:'.formatter.qty'}"/>
+                <Text text="{draft>uom}"/>
+                <Text text="{parts:[{path:'draft>unitPrice'},{path:'ui>/currency'}], formatter:'.formatter.money2'}"/>
+                <Text text="{draft>deliveryDate}"/>
+                <Text text="{draft>plant}"/>
+                <Text text="{parts:[{path:'draft>lineValue'},{path:'ui>/currency'}], formatter:'.formatter.money2'}"/>
+                <HBox justifyContent="End">
+                  <Button icon="sap-icon://edit" type="Transparent" press=".onEditDraftLine"/>
+                  <Button icon="sap-icon://delete" type="Transparent" press=".onDeleteDraftLine"/>
+                </HBox>
+              </cells>
+            </ColumnListItem>
+          </items>
+        </Table>
 
-  <!-- SAVED PO: your existing SmartTable, now without customToolbar -->
-  <st:SmartTable id="lineTable" entitySet="POLines" tableBindingPath="lines" tableType="ResponsiveTable"
-    visible="{= !${ui>/isNew}}" useExportToExcel="false"
-    enableAutoBinding="true" useVariantManagement="false" useTablePersonalisation="false" showRowCount="false"
-    requestAtLeastFields="ID,po_ID,taxRate,lineNumber">
-    <Table updateFinished=".onLinesUpdated">
-      <!-- columns and items exactly as you have them now -->
-    </Table>
-  </st:SmartTable>
+        <!-- SAVED PO: SmartTable. Its generated columns (Line, Material, Description, UOM,
+             Delivery Date, Plant) get their importance from @UI.Importance in the annotations. -->
+        <st:SmartTable id="lineTable" entitySet="POLines" tableBindingPath="lines" tableType="ResponsiveTable"
+          visible="{= !${ui>/isNew}}" useExportToExcel="false"
+          enableAutoBinding="true" useVariantManagement="false" useTablePersonalisation="false" showRowCount="false"
+          requestAtLeastFields="ID,po_ID,taxRate,lineNumber">
+          <Table popinLayout="GridSmall" contextualWidth="Auto" updateFinished=".onLinesUpdated">
+            <columns>
+              <Column importance="High" hAlign="End" minScreenWidth="Tablet" demandPopin="true">
+                <customData><core:CustomData key="p13nData" value='\{"columnKey":"qty","leadingProperty":"orderedQuantity","sortProperty":"orderedQuantity","columnIndex":"3"}'/></customData>
+                <Text text="Qty"/>
+              </Column>
+              <Column importance="Medium" hAlign="End" minScreenWidth="Tablet" demandPopin="true">
+                <customData><core:CustomData key="p13nData" value='\{"columnKey":"price","leadingProperty":"unitPrice","sortProperty":"unitPrice","columnIndex":"5"}'/></customData>
+                <Text text="Unit Price"/>
+              </Column>
+              <Column importance="High" hAlign="End" minScreenWidth="Tablet" demandPopin="true">
+                <customData><core:CustomData key="p13nData" value='\{"columnKey":"amount","leadingProperty":"lineValue","sortProperty":"lineValue","columnIndex":"8"}'/></customData>
+                <Text text="Amount"/>
+              </Column>
+              <Column importance="High" hAlign="End" minScreenWidth="Tablet" demandPopin="true">
+                <customData><core:CustomData key="p13nData" value='\{"columnKey":"actions","leadingProperty":"ID","columnIndex":"9"}'/></customData>
+                <Text text="Actions"/>
+              </Column>
+            </columns>
+            <items>
+              <ColumnListItem>
+                <cells>
+                  <Text text="{path:'orderedQuantity', formatter:'.formatter.qty'}"/>
+                  <Text text="{parts:[{path:'unitPrice'},{path:'ui>/currency'}], formatter:'.formatter.money2'}"/>
+                  <Text text="{parts:[{path:'lineValue'},{path:'ui>/currency'}], formatter:'.formatter.money2'}"/>
+                  <HBox justifyContent="End">
+                    <Button icon="sap-icon://edit" type="Transparent" press=".onEditLine" enabled="{= !${ui>/locked}}"/>
+                    <Button icon="sap-icon://delete" type="Transparent" press=".onDeleteLine" enabled="{= !${ui>/locked}}"/>
+                  </HBox>
+                </cells>
+              </ColumnListItem>
+            </items>
+          </Table>
+        </st:SmartTable>
 
-  <FlexBox justifyContent="End" alignItems="Center" wrap="Wrap" renderType="Bare" class="sapUiSmallMarginTop">
-    <VBox alignItems="End" class="sapUiSmallMarginEnd sapUiTinyMarginBottom">
-      <Label text="Subtotal"/>
-      <ObjectNumber number="{parts:[{path:'ui>/subtotal'},{path:'currency_code'}], formatter:'.formatter.money2'}"/>
-    </VBox>
-    <VBox alignItems="End" class="sapUiSmallMarginEnd sapUiTinyMarginBottom">
-      <Label text="{parts:[{path:'ui>/subtotal'},{path:'ui>/tax'}], formatter:'.formatter.taxLabel'}"/>
-      <ObjectNumber number="{parts:[{path:'ui>/tax'},{path:'currency_code'}], formatter:'.formatter.money2'}"/>
-    </VBox>
-    <VBox alignItems="End" class="sapUiSmallMarginEnd sapUiTinyMarginBottom">
-      <Label text="Total PO Value"/>
-      <ObjectNumber emphasized="true"
-        number="{parts:[{path:'ui>/total'},{path:'currency_code'}], formatter:'.formatter.money2'}"/>
-    </VBox>
-  </FlexBox>
-</Panel>
+        <!-- Totals: wrap and right-align -->
+        <FlexBox justifyContent="End" alignItems="Center" wrap="Wrap" renderType="Bare"
+          class="sapUiSmallMarginTop">
+          <VBox alignItems="End" class="sapUiSmallMarginEnd sapUiTinyMarginBottom">
+            <Label text="Subtotal"/>
+            <ObjectNumber number="{parts:[{path:'ui>/subtotal'},{path:'ui>/currency'}], formatter:'.formatter.money2'}"/>
+          </VBox>
+          <VBox alignItems="End" class="sapUiSmallMarginEnd sapUiTinyMarginBottom">
+            <Label text="{parts:[{path:'ui>/subtotal'},{path:'ui>/tax'}], formatter:'.formatter.taxLabel'}"/>
+            <ObjectNumber number="{parts:[{path:'ui>/tax'},{path:'ui>/currency'}], formatter:'.formatter.money2'}"/>
+          </VBox>
+          <VBox alignItems="End" class="sapUiSmallMarginEnd sapUiTinyMarginBottom">
+            <Label text="Total PO Value"/>
+            <ObjectNumber emphasized="true"
+              number="{parts:[{path:'ui>/total'},{path:'ui>/currency'}], formatter:'.formatter.money2'}"/>
+          </VBox>
+        </FlexBox>
+      </Panel>
 
-      <!-- Supplier Delivery / E2E Flow + Supplier Communication -->
-      <HBox alignItems="Stretch" class="sapUiResponsiveMargin" width="auto">
-        <Panel width="100%" class="sapUiSmallMarginEnd">
-          <layoutData><FlexItemData growFactor="3" baseSize="0"/></layoutData>
+      <!-- Supplier Delivery / E2E Flow + Supplier Communication: side by side on desktop, stacked on phone -->
+      <FlexBox wrap="Wrap" alignItems="Stretch" renderType="Div"
+        class="sapUiSmallMarginBeginEnd sapUiSmallMarginBottom">
+
+        <Panel width="auto" class="sapUiTinyMarginTop sapUiTinyMarginBottom sapUiTinyMarginEnd">
+          <layoutData><FlexItemData growFactor="3" baseSize="22rem"/></layoutData>
           <headerToolbar>
             <OverflowToolbar><Title text="Supplier Delivery / E2E Flow"/><core:Icon src="sap-icon://hint"/></OverflowToolbar>
           </headerToolbar>
-          <HBox items="{flow>/steps}" width="100%" justifyContent="SpaceAround">
-            <VBox alignItems="Center">
+          <FlexBox items="{flow>/steps}" wrap="Wrap" justifyContent="SpaceAround" alignItems="Start" renderType="Div">
+            <VBox alignItems="Center" class="sapUiTinyMargin" width="9rem">
               <HBox alignItems="Center">
                 <Avatar displaySize="XS" displayShape="Circle"
                   src="{= ${flow>done} ? 'sap-icon://accept' : '' }" initials="{flow>n}"
                   backgroundColor="{= ${flow>done} ? 'Accent6' : 'Placeholder' }"/>
                 <core:Icon src="sap-icon://slim-arrow-right" class="sapUiTinyMarginBegin" visible="{= ${flow>n} !== 4}"/>
               </HBox>
-              <Title text="{flow>n}. {flow>title}" level="H6" class="sapUiTinyMarginTop"/>
+              <Title text="{flow>n}. {flow>title}" level="H6" wrapping="true" textAlign="Center" class="sapUiTinyMarginTop"/>
               <Text text="{flow>date}"/>
               <Text text="{flow>time}"/>
             </VBox>
-          </HBox>
+          </FlexBox>
         </Panel>
 
-        <Panel width="100%">
-          <layoutData><FlexItemData growFactor="2" baseSize="0"/></layoutData>
+        <Panel width="auto" class="sapUiTinyMarginTop sapUiTinyMarginBottom">
+          <layoutData><FlexItemData growFactor="2" baseSize="18rem"/></layoutData>
           <headerToolbar>
             <OverflowToolbar><Title text="Supplier Communication"/><core:Icon src="sap-icon://hint"/></OverflowToolbar>
           </headerToolbar>
@@ -202,7 +257,8 @@
             visible="{= ${flow>/comm/status} === 'SENT'}"/>
           <MessageStrip type="Error" showIcon="true" text="{flow>/comm/error}"
             visible="{= ${flow>/comm/status} === 'FAILED'}"/>
-          <f:SimpleForm editable="false" layout="ColumnLayout" columnsM="1" columnsL="1" columnsXL="1">
+          <f:SimpleForm editable="false" layout="ColumnLayout" columnsM="1" columnsL="1" columnsXL="1"
+            adjustLabelSpan="false" labelSpanS="12" labelSpanM="12">
             <Label text="Delivery Channel"/><Text text="{flow>/comm/channel}"/>
             <Label text="Sent To"/><Text text="{flow>/comm/sentTo}"/>
             <Label text="Last Sent"/><Text text="{flow>/comm/sentAt}"/>
@@ -212,7 +268,7 @@
               icon="sap-icon://circle-task-2"/>
           </f:SimpleForm>
         </Panel>
-      </HBox>
+      </FlexBox>
 
     </content>
   </Page>
