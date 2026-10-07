@@ -44,34 +44,44 @@
               <Button text="Create"  type="Transparent" press=".onCreate"/>
             </OverflowToolbar>
           </st:customToolbar>
-          <Table mode="None" growing="true" growingThreshold="20"
-                 updateFinished=".onUpdateFinished">
-            <columns>
-              <Column>
-                <customData><core:CustomData key="p13nData" value='\{"columnKey":"amount","leadingProperty":"totalOrderValue","sortProperty":"totalOrderValue","columnIndex":"4"}'/></customData>
-                <Text text="Amount"/>
-              </Column>
-              <Column>
-                <customData><core:CustomData key="p13nData" value='\{"columnKey":"status","leadingProperty":"invoicingStatus","sortProperty":"invoicingStatus","columnIndex":"5"}'/></customData>
-                <Text text="Status"/>
-              </Column>
-              <Column>
-                <customData><core:CustomData key="p13nData" value='\{"columnKey":"action","leadingProperty":"ID","columnIndex":"6"}'/></customData>
-                <Text text="Action"/>
-              </Column>
-            </columns>
-            <items>
-              <ColumnListItem type="Navigation" press=".onRowPress">
-                <cells>
-                  <Text text="{parts:[{path:'totalOrderValue'},{path:'currency_code'}], formatter:'.formatter.money0'}"/>
-                  <ObjectStatus inverted="true"
-                    text="{path:'invoicingStatus', formatter:'.formatter.statusText'}"
-                    state="{path:'invoicingStatus', formatter:'.formatter.statusState'}"/>
-                  <Link text="View Details →" press=".onViewDetails"/>
-                </cells>
-              </ColumnListItem>
-            </items>
-          </Table>
+         <Table mode="None" growing="true" growingThreshold="20"
+       popinLayout="GridSmall"
+       contextualWidth="Auto"
+       updateFinished=".onUpdateFinished">
+  <columns>
+    <Column importance="Medium" minScreenWidth="Tablet" demandPopin="true" hAlign="End">
+      <customData>
+        <core:CustomData key="p13nData" value='\{"columnKey":"amount","leadingProperty":"totalOrderValue","sortProperty":"totalOrderValue","columnIndex":"4"}'/>
+      </customData>
+      <Text text="Amount"/>
+    </Column>
+
+    <Column importance="High" minScreenWidth="Tablet" demandPopin="true">
+      <customData>
+        <core:CustomData key="p13nData" value='\{"columnKey":"status","leadingProperty":"invoicingStatus","sortProperty":"invoicingStatus","columnIndex":"5"}'/>
+      </customData>
+      <Text text="Status"/>
+    </Column>
+
+    <Column importance="Low" minScreenWidth="Desktop" demandPopin="true" popinDisplay="Inline" hAlign="End">
+      <customData>
+        <core:CustomData key="p13nData" value='\{"columnKey":"action","leadingProperty":"ID","columnIndex":"6"}'/>
+      </customData>
+      <Text text="Action"/>
+    </Column>
+  </columns>
+  <items>
+    <ColumnListItem type="Active" press=".onRowPress">
+      <cells>
+        <Text text="{parts:[{path:'totalOrderValue'},{path:'currency_code'}], formatter:'.formatter.money0'}"/>
+        <ObjectStatus inverted="true"
+          text="{path:'invoicingStatus', formatter:'.formatter.statusText'}"
+          state="{path:'invoicingStatus', formatter:'.formatter.statusState'}"/>
+        <Link text="View Details" press=".onViewDetails"/>
+      </cells>
+    </ColumnListItem>
+  </items>
+</Table>
         </st:SmartTable>
       </Panel>
 

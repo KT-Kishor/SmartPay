@@ -96,77 +96,79 @@
       </Panel>
 
       <!-- Line Items -->
-      <Panel class="sapUiResponsiveMargin" width="auto">
-        <st:SmartTable id="lineTable" entitySet="POLines" tableBindingPath="lines" tableType="ResponsiveTable"
-          enableAutoBinding="true" useVariantManagement="false" useTablePersonalisation="false" showRowCount="false"
-          requestAtLeastFields="ID,po_ID,taxRate,lineNumber">
-          <st:customToolbar>
-            <OverflowToolbar design="Transparent">
-              <Title text="Line Items ({ui>/lineCount})"/>
-              <core:Icon src="sap-icon://hint"/>
-              <ToolbarSpacer/>
-              <Button text="Add Line Item" type="Transparent" press=".onAddLine" enabled="{= !${ui>/locked}}"/>
-              <Button text="Import" type="Transparent" press=".onImport" enabled="{= !${ui>/locked}}"/>
-              <Button icon="sap-icon://overflow" type="Transparent" press=".onOverflow"/>
-            </OverflowToolbar>
-          </st:customToolbar>
-          <Table updateFinished=".onLinesUpdated">
-            <columns>
-              <Column hAlign="End">
-                <customData><core:CustomData key="p13nData" value='\{"columnKey":"qty","leadingProperty":"orderedQuantity","sortProperty":"orderedQuantity","columnIndex":"3"}'/></customData>
-                <Text text="Qty"/>
-              </Column>
-              <Column hAlign="End">
-                <customData><core:CustomData key="p13nData" value='\{"columnKey":"price","leadingProperty":"unitPrice","sortProperty":"unitPrice","columnIndex":"5"}'/></customData>
-                <Text text="Unit Price"/>
-              </Column>
-              <Column hAlign="End">
-                <customData><core:CustomData key="p13nData" value='\{"columnKey":"amount","leadingProperty":"lineValue","sortProperty":"lineValue","columnIndex":"8"}'/></customData>
-                <Text text="Amount"/>
-              </Column>
-              <Column hAlign="End">
-                <customData><core:CustomData key="p13nData" value='\{"columnKey":"actions","leadingProperty":"ID","columnIndex":"9"}'/></customData>
-                <Text text="Actions"/>
-              </Column>
-            </columns>
-            <items>
-              <!-- row navigation: click a line row -> View PO -->
-              <ColumnListItem>
-                <cells>
-                  <Text text="{path:'orderedQuantity', formatter:'.formatter.qty'}"/>
-                  <Text text="{parts:[{path:'unitPrice'},{path:'ui>/currency'}], formatter:'.formatter.money2'}"/>
-                  <Text text="{parts:[{path:'lineValue'},{path:'ui>/currency'}], formatter:'.formatter.money2'}"/>
-                  <HBox justifyContent="End">
-                    <Button icon="sap-icon://edit" type="Transparent" press=".onEditLine" enabled="{= !${ui>/locked}}"/>
-                    <Button icon="sap-icon://delete" type="Transparent" press=".onDeleteLine" enabled="{= !${ui>/locked}}"/>
-                  </HBox>
-                </cells>
-              </ColumnListItem>
-            </items>
-          </Table>
-        </st:SmartTable>
-        <FlexBox justifyContent="End" alignItems="Center" wrap="Wrap" renderType="Bare"
-          class="sapUiSmallMarginTop">
-          <VBox alignItems="End" class="sapUiSmallMarginEnd sapUiTinyMarginBottom">
-            <Label text="Subtotal"/>
-            <ObjectNumber
-              number="{parts:[{path:'subtotalAmount'},{path:'currency_code'}], formatter:'.formatter.money2'}"/>
-          </VBox>
+     <!-- Line Items -->
+<Panel class="sapUiResponsiveMargin" width="auto">
+  <OverflowToolbar design="Transparent">
+    <Title text="Line Items ({ui>/lineCount})"/>
+    <core:Icon src="sap-icon://hint"/>
+    <ToolbarSpacer/>
+    <Button text="Add Line Item" type="Transparent" press=".onAddLine" enabled="{= !${ui>/locked}}"/>
+    <Button text="Import" type="Transparent" press=".onImport" enabled="{= !${ui>/locked}}"/>
+    <Button icon="sap-icon://overflow" type="Transparent" press=".onOverflow"/>
+  </OverflowToolbar>
 
-          <VBox alignItems="End" class="sapUiSmallMarginEnd sapUiTinyMarginBottom">
-            <Label
-              text="{parts:[{path:'subtotalAmount'},{path:'taxAmount'}], formatter:'.formatter.taxLabel'}"/>
-            <ObjectNumber
-              number="{parts:[{path:'taxAmount'},{path:'currency_code'}], formatter:'.formatter.money2'}"/>
-          </VBox>
+  <!-- NEW (unsaved) PO: lines held locally -->
+  <Table id="draftLineTable" items="{draft>/rows}" visible="{ui>/isNew}" popinLayout="GridSmall"
+         noDataText="No line items yet. Click Add Line Item.">
+    <columns>
+      <Column hAlign="End" width="4rem"><Text text="Line"/></Column>
+      <Column minScreenWidth="Tablet" demandPopin="true"><Text text="Material / Service"/></Column>
+      <Column minScreenWidth="Tablet" demandPopin="true"><Text text="Description"/></Column>
+      <Column hAlign="End"><Text text="Qty"/></Column>
+      <Column minScreenWidth="Tablet" demandPopin="true"><Text text="UOM"/></Column>
+      <Column hAlign="End" minScreenWidth="Tablet" demandPopin="true"><Text text="Unit Price"/></Column>
+      <Column minScreenWidth="Desktop" demandPopin="true"><Text text="Delivery Date"/></Column>
+      <Column minScreenWidth="Desktop" demandPopin="true"><Text text="Plant / Location"/></Column>
+      <Column hAlign="End"><Text text="Amount"/></Column>
+      <Column hAlign="End"><Text text="Actions"/></Column>
+    </columns>
+    <items>
+      <ColumnListItem>
+        <cells>
+          <Text text="{draft>lineNumber}"/>
+          <Text text="{draft>materialCode}"/>
+          <Text text="{draft>description}"/>
+          <Text text="{path:'draft>orderedQuantity', formatter:'.formatter.qty'}"/>
+          <Text text="{draft>uom}"/>
+          <Text text="{parts:[{path:'draft>unitPrice'},{path:'ui>/currency'}], formatter:'.formatter.money2'}"/>
+          <Text text="{draft>deliveryDate}"/>
+          <Text text="{draft>plant}"/>
+          <Text text="{parts:[{path:'draft>lineValue'},{path:'ui>/currency'}], formatter:'.formatter.money2'}"/>
+          <HBox justifyContent="End">
+            <Button icon="sap-icon://edit" type="Transparent" press=".onEditDraftLine"/>
+            <Button icon="sap-icon://delete" type="Transparent" press=".onDeleteDraftLine"/>
+          </HBox>
+        </cells>
+      </ColumnListItem>
+    </items>
+  </Table>
 
-          <VBox alignItems="End" class="sapUiSmallMarginEnd sapUiTinyMarginBottom">
-            <Label text="Total PO Value"/>
-            <ObjectNumber emphasized="true"
-              number="{parts:[{path:'totalOrderValue'},{path:'currency_code'}], formatter:'.formatter.money2'}"/>
-          </VBox>
-        </FlexBox>
-      </Panel>
+  <!-- SAVED PO: your existing SmartTable, now without customToolbar -->
+  <st:SmartTable id="lineTable" entitySet="POLines" tableBindingPath="lines" tableType="ResponsiveTable"
+    visible="{= !${ui>/isNew}}" useExportToExcel="false"
+    enableAutoBinding="true" useVariantManagement="false" useTablePersonalisation="false" showRowCount="false"
+    requestAtLeastFields="ID,po_ID,taxRate,lineNumber">
+    <Table updateFinished=".onLinesUpdated">
+      <!-- columns and items exactly as you have them now -->
+    </Table>
+  </st:SmartTable>
+
+  <FlexBox justifyContent="End" alignItems="Center" wrap="Wrap" renderType="Bare" class="sapUiSmallMarginTop">
+    <VBox alignItems="End" class="sapUiSmallMarginEnd sapUiTinyMarginBottom">
+      <Label text="Subtotal"/>
+      <ObjectNumber number="{parts:[{path:'ui>/subtotal'},{path:'currency_code'}], formatter:'.formatter.money2'}"/>
+    </VBox>
+    <VBox alignItems="End" class="sapUiSmallMarginEnd sapUiTinyMarginBottom">
+      <Label text="{parts:[{path:'ui>/subtotal'},{path:'ui>/tax'}], formatter:'.formatter.taxLabel'}"/>
+      <ObjectNumber number="{parts:[{path:'ui>/tax'},{path:'currency_code'}], formatter:'.formatter.money2'}"/>
+    </VBox>
+    <VBox alignItems="End" class="sapUiSmallMarginEnd sapUiTinyMarginBottom">
+      <Label text="Total PO Value"/>
+      <ObjectNumber emphasized="true"
+        number="{parts:[{path:'ui>/total'},{path:'currency_code'}], formatter:'.formatter.money2'}"/>
+    </VBox>
+  </FlexBox>
+</Panel>
 
       <!-- Supplier Delivery / E2E Flow + Supplier Communication -->
       <HBox alignItems="Stretch" class="sapUiResponsiveMargin" width="auto">

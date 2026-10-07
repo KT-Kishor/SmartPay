@@ -23,9 +23,13 @@ sap.ui.define([
 
   const STATUS_TEXT = { SENT: "Sent Successfully", FAILED: "Failed", PENDING: "Pending" };
 
+  // deferred change group that holds line items of a PO that is not saved yet
+  const DRAFT_GROUP = "draftLines";
+
   const NEW_UI = {
     locked: false, saved: false, edit: true, currency: "USD",
-    lineCount: 0, chipText: "Incomplete", chipState: "Warning"
+    lineCount: 0, chipText: "Incomplete", chipState: "Warning",
+    isNew: true, subtotal: 0, tax: 0, total: 0
   };
 
   // every association shown as text in the header form
@@ -38,10 +42,19 @@ sap.ui.define([
       const v = this.getView();
       v.setModel(new JSONModel(Object.assign({}, NEW_UI)), "ui");
       v.setModel(new JSONModel({ steps: [], comm: {} }), "flow");
+      v.setModel(new JSONModel({ rows: [] }), "draft");
 
       // MSG: message model for the popover + automatic message handling for this view
       v.setModel(Messaging.getMessageModel(), "message");
       Messaging.registerObject(v, true);
+
+      this._draftCtxs = [];
+      this._plants = {};
+
+      const m0 = this.getOwnerComponent().getModel();
+      if (m0.getDeferredGroups().indexOf(DRAFT_GROUP) < 0) {
+        m0.setDeferredGroups(m0.getDeferredGroups().concat([DRAFT_GROUP]));
+      }
 
       this.getOwnerComponent().getRouter()
         .getRoute("managePO").attachPatternMatched(this._onMatched, this);
@@ -61,12 +74,12 @@ sap.ui.define([
 
     // ---- MSG: message popover
     // open only when there is something to show; anchor on the message button
-    // if it is already rendered, otherwise on Save Draft (always visible)
+    // if it is already rendered, otherwise on Save Draft (needs id="saveDraftBtn" in the view)
     _showMessages: function () {
       if (!Messaging.getMessageModel().getData().length) { return; }
 
       const btn = this.byId("messagePopoverBtn");
-      const anchor = btn.getDomRef() ? btn : this.byId("saveDraftBtn");
+      const anchor = (btn && btn.getDomRef()) ? btn : this.byId("saveDraftBtn");
 
       if (!this._pMessages) {
         this._pMessages = this.loadFragment({ name: "smartpay.invoice.smartpay.view.MessagePopover" });
@@ -85,6 +98,7 @@ sap.ui.define([
     onMessagesPress: function () {
       this._showMessages();
     },
+
     _refreshLines: function () {
       const st = this.byId("lineTable");
       const b = st.getTable().getBinding("items");
@@ -103,9 +117,18 @@ sap.ui.define([
         m.resetChanges(undefined, undefined, true);
         v.unbindElement();
 
+        // forget buffered lines of a previous (unsaved) PO
+        this._draftCtxs = [];
+        this._plants = {};
+        v.getModel("draft").setData({ rows: [] });
+
         if (poId) {
           const path = "/" + m.createKey("PurchaseOrders", { ID: poId });
-          this._ui({ edit: false, locked: true, saved: true });
+          this._ui({
+            edit: false, locked: true, saved: true,
+            isNew: false, subtotal: 0, tax: 0, total: 0
+          });
+          v.setBindingContext(null);
           v.bindElement({ path: path, parameters: { expand: EXPAND } });
           this._refresh(path);
         } else {
@@ -140,6 +163,9 @@ sap.ui.define([
             saved: true,
             locked: locked,
             currency: po.currency_code || "USD",
+            subtotal: po.subtotalAmount,
+            tax: po.taxAmount,
+            total: po.totalOrderValue,
             chipText: locked ? "Sent" : (ready ? "Ready to Send" : "Incomplete"),
             chipState: locked ? "Information" : (ready ? "Success" : "Warning")
           });
@@ -196,13 +222,16 @@ sap.ui.define([
       if (c && c.setValueHelpIconSrc) { c.setValueHelpIconSrc("sap-icon://search"); }
     },
 
+    // the SmartTable is hidden for an unsaved PO, so it must not reset the count
     onLinesUpdated: function (e) {
+      if (!this._poId) { return; }
       this._ui({ lineCount: e.getParameter("total") || 0 });
     },
 
     // ---- submit helpers
-    _submit: function () {
+    _submit: function (groupId) {
       return new Promise((res, rej) => this._m().submitChanges({
+        groupId: groupId,
         success: (d) => {
           const bad = ((d && d.__batchResponses) || []).find(
             x => x.response && x.response.statusCode >= 400
@@ -255,6 +284,63 @@ sap.ui.define([
       this._refresh(path);
     },
 
+    // ---- local (unsaved PO) line items
+    _plantName: function (id) {
+      if (!id) { return ""; }
+      if (this._plants[id] !== undefined) { return this._plants[id]; }
+      this._plants[id] = "";
+      const m = this._m();
+      m.read("/" + m.createKey("PlantLocations", { ID: id }), {
+        success: (p) => { this._plants[id] = p.locationName; this._syncDraft(); }
+      });
+      return "";
+    },
+
+    // rebuild the local table + totals from the pending (unsaved) line entries
+    _syncDraft: function () {
+      const hdr = this.getView().getBindingContext();
+      const cur = (hdr && hdr.getProperty("currency_code")) || "USD";
+      let sub = 0, tax = 0;
+
+      const rows = this._draftCtxs.map((c, i) => {
+        const o = c.getObject() || {};
+        const q = Number(o.orderedQuantity) || 0;
+        const p = Number(o.unitPrice) || 0;
+        const t = Number(o.taxRate) || 0;
+        const val = Math.round(q * p * 100) / 100;
+        sub += val;
+        tax += Math.round(val * t) / 100;
+        return {
+          lineNumber: (i + 1) * 10,
+          materialCode: o.materialCode || "",
+          description: o.description || "",
+          orderedQuantity: q,
+          uom: o.uom_code || "",
+          unitPrice: p,
+          deliveryDate: o.deliveryDate ? fDate.format(new Date(o.deliveryDate)) : "",
+          plant: this._plantName(o.plant_ID),
+          lineValue: val
+        };
+      });
+
+      this.getView().getModel("draft").setData({ rows: rows });
+      this._ui({
+        lineCount: rows.length,
+        currency: cur,
+        subtotal: Math.round(sub * 100) / 100,
+        tax: Math.round(tax * 100) / 100,
+        total: Math.round((sub + tax) * 100) / 100
+      });
+    },
+
+    // after the header exists: point buffered lines to it and send them
+    _saveDraftLines: function (poId) {
+      if (!this._draftCtxs.length) { return Promise.resolve(); }
+      const m = this._m();
+      this._draftCtxs.forEach((c) => m.setProperty(c.getPath() + "/po_ID", poId));
+      return this._submit(DRAFT_GROUP);
+    },
+
     // Mandatory-field and date validation is enforced by the CAP service;
     // its messages land in the MessageManager and are shown in the popover.
     onSaveDraft: function () {
@@ -270,23 +356,38 @@ sap.ui.define([
       Messaging.removeAllMessages();                          // MSG: start each save with a clean list
       v.setBusy(true);
 
-      this._submit().then((d) => {
-        v.setBusy(false);
-        MessageToast.show("Draft saved");
-
-        if (creating) {
-          const id = d.__batchResponses[0].__changeResponses[0].data.ID;
-          this.getOwnerComponent().getRouter().navTo("managePO", { poId: id }, true);
-        } else {
+      if (!creating) {
+        this._submit().then(() => {
+          v.setBusy(false);
+          MessageToast.show("Draft saved");
           this._ui({ edit: false });
           this._reload();
+        }).catch(this._fail.bind(this));
+        return;
+      }
+
+      // new PO: header first, then the buffered lines with the new PO id
+      let newId, lineError = null;
+      this._submit("changes").then((d) => {
+        newId = d.__batchResponses[0].__changeResponses[0].data.ID;
+        return this._saveDraftLines(newId).catch((err) => { lineError = err; });
+      }).then(() => {
+        v.setBusy(false);
+        if (lineError) {
+          MessageBox.warning("PO saved, but the line items could not be saved: " + lineError.message +
+            "\nPlease add them again.");
+        } else {
+          MessageToast.show("Draft saved");
         }
+        this.getOwnerComponent().getRouter().navTo("managePO", { poId: newId }, true);
       }).catch(this._fail.bind(this));
     },
+
     onLinePress: function () {
       // UI5 router: query parameters are passed under the "?query" key
       this.getOwnerComponent().getRouter().navTo("viewPO", { "?query": { poId: this._poId } });
     },
+
     onPreview: function () {
       Messaging.removeAllMessages();                          // MSG
       this._call("previewPO", this._poId).then(() => {
@@ -294,6 +395,7 @@ sap.ui.define([
         this._reload();
       }).catch(this._fail.bind(this));
     },
+
     onSend: function () {
       Messaging.removeAllMessages();                          // MSG
       this.getView().setBusy(true);
@@ -306,6 +408,7 @@ sap.ui.define([
         })
         .catch(this._fail.bind(this));
     },
+
     // ---- lines
     _openLine: function (ctx) {
       const open = (d) => { d.setBindingContext(ctx); d.open(); };
@@ -320,37 +423,94 @@ sap.ui.define([
         open(d);
       });
     },
-    onAddLine: function () {
-      if (!this._poId) {
-        MessageBox.information("Please save the draft first.");
-        return;
-      }
-      this._lineCtx = this._m().createEntry("/POLines", {
-        properties: { po_ID: this._poId, taxRate: "8", orderedQuantity: "1" }
+
+    // copy of the plain values of a line, used to undo edits on Cancel
+    _snapshot: function (ctx) {
+      const o = ctx.getObject() || {}, s = {};
+      Object.keys(o).forEach((k) => {
+        const x = o[k];
+        if (k !== "__metadata" && (x === null || typeof x !== "object" || x instanceof Date)) { s[k] = x; }
       });
+      this._snap = s;
+    },
+
+    onAddLine: function () {
+      const props = { taxRate: "8", orderedQuantity: "1" };
+      const opts = { properties: props };
+      if (this._poId) {
+        props.po_ID = this._poId;                  // saved PO: goes straight to the server on save
+      } else {
+        opts.groupId = DRAFT_GROUP;                // unsaved PO: buffered until Save Draft
+      }
+      this._lineCtx = this._m().createEntry("/POLines", opts);
+      this._snap = null;
       this._openLine(this._lineCtx);
     },
+
     onEditLine: function (e) {
       this._lineCtx = e.getSource().getBindingContext();
+      this._snap = null;
       this._openLine(this._lineCtx);
     },
+
+    onEditDraftLine: function (e) {
+      const i = e.getSource().getBindingContext("draft").getPath().split("/").pop();
+      this._lineCtx = this._draftCtxs[i];
+      this._snapshot(this._lineCtx);
+      this._openLine(this._lineCtx);
+    },
+
+    onDeleteDraftLine: function (e) {
+      const i = Number(e.getSource().getBindingContext("draft").getPath().split("/").pop());
+      MessageBox.confirm("Delete this line item?", {
+        onClose: (a) => {
+          if (a !== "OK") { return; }
+          this._m().deleteCreatedEntry(this._draftCtxs[i]);
+          this._draftCtxs.splice(i, 1);
+          this._syncDraft();
+        }
+      });
+    },
+
     onSaveLine: function () {
+      if (!this._poId) {                       // unsaved PO: keep the line locally
+        const o = this._lineCtx.getObject() || {};
+        const bad = [];
+        if (!(Number(o.orderedQuantity) > 0)) { bad.push("Quantity must be greater than 0"); }
+        if (!(Number(o.unitPrice) >= 0)) { bad.push("Unit price must be 0 or more"); }
+        if (bad.length) { MessageBox.error(bad.join("\n")); return; }
+
+        if (this._draftCtxs.indexOf(this._lineCtx) < 0) { this._draftCtxs.push(this._lineCtx); }
+        this._snap = null;
+        this._dlg.close();
+        this._syncDraft();
+        return;
+      }
+
       Messaging.removeAllMessages();
       this._submit().then(() => {
         this._dlg.close();
-        this._refreshLines();          // was rebindTable()
+        this._refreshLines();
         this._reload();
       }).catch(this._fail.bind(this));
     },
+
     onCancelLine: function () {
       const m = this._m();
-      if (this._lineCtx.isTransient && this._lineCtx.isTransient()) {
-        m.deleteCreatedEntry(this._lineCtx);
+      const ctx = this._lineCtx;
+
+      if (this._draftCtxs.indexOf(ctx) >= 0) {            // editing a buffered line: undo the edits
+        Object.keys(this._snap || {}).forEach((k) => {
+          m.setProperty(ctx.getPath() + "/" + k, this._snap[k]);
+        });
+      } else if (ctx.isTransient && ctx.isTransient()) {  // brand-new line, never kept
+        m.deleteCreatedEntry(ctx);
       } else {
-        m.resetChanges([this._lineCtx.getPath()], true);
+        m.resetChanges([ctx.getPath()], true);
       }
       this._dlg.close();
     },
+
     onDeleteLine: function (e) {
       const path = e.getSource().getBindingContext().getPath();
       const m = this._m();
@@ -367,9 +527,11 @@ sap.ui.define([
         }
       });
     },
+
     onImport: function () {
       MessageToast.show("Import from Template: not implemented yet");
     },
+
     onOverflow: function () {
       MessageToast.show("Download template / Delete all lines: not implemented yet");
     }
