@@ -44,7 +44,8 @@
             <Title text="PO Header Details"/>
             <core:Icon src="sap-icon://hint"/>
             <ToolbarSpacer/>
-            <Button text="Edit" type="Transparent" press=".onToggleEdit" visible="{= !${ui>/locked}}"/>
+            <Button text="Edit" type="Transparent" press=".onToggleEdit"
+  visible="{= !${ui>/locked} &amp;&amp; !${ui>/isNew}}"/>
           </OverflowToolbar>
         </headerToolbar>
 
@@ -108,7 +109,6 @@
         </cg:CSSGrid>
       </Panel>
 
-      <!-- Line Items -->
       <Panel class="sapUiResponsiveMargin" width="auto">
         <OverflowToolbar design="Transparent">
           <Title text="Line Items ({ui>/lineCount})"/>
