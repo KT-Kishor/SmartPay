@@ -19,7 +19,7 @@
       </OverflowToolbar>
 
       <Panel class="sapUiResponsiveMargin" width="auto">
-        <sfb:SmartFilterBar id="smartFilterBar" entitySet="SupplierPOs" enableBasicSearch="true" useToolbar="false"
+        <sfb:SmartFilterBar id="smartFilterBar"  entitySet="SupplierPOs" enableBasicSearch="true" useToolbar="false"
           filterContainerWidth="11rem" showGoOnFB="true" showClearOnFB="true" considerAnalyticalParameters="false"
           initialized=".onFilterInit" clear=".onClear">
           <sfb:controlConfiguration>

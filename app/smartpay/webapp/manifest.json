@@ -67,7 +67,10 @@
         "settings": { "defaultBindingMode": "OneWay", "defaultCountMode": "Inline" }
       }
     },
-    "resources": { "css": [ { "uri": "css/style.css" } ] },
+    "resources": {
+      "css": [ { "uri": "css/style.css" } ],
+      "js":  [ { "uri": "lib/xlsx.full.min.js" } ]
+    },
     "routing": {
       "config": {
         "routerClass": "sap.m.routing.Router",
@@ -79,15 +82,15 @@
         "path": "smartpay.invoice.smartpay.view",
         "async": true
       },
-     "routes": [
-    { "name": "home",     "pattern": "",                 "target": "viewPO" },
-    { "name": "managePO", "pattern": "manage-po/:poId:", "target": "managePO" },
-    { "name": "viewPO",   "pattern": "view-po:?query:", "target": "viewPO" }
-],
-"targets": {
-    "managePO": { "id": "managePO", "name": "ManagePO" },
-    "viewPO":   { "id": "viewPO",   "name": "ViewPO" }
-}
+      "routes": [
+        { "name": "home",     "pattern": "",                 "target": "viewPO" },
+        { "name": "managePO", "pattern": "manage-po/:poId:", "target": "managePO" },
+        { "name": "viewPO",   "pattern": "view-po:?query:",  "target": "viewPO" }
+      ],
+      "targets": {
+        "managePO": { "id": "managePO", "name": "ManagePO" },
+        "viewPO":   { "id": "viewPO",   "name": "ViewPO" }
+      }
     },
     "rootView": {
       "viewName": "smartpay.invoice.smartpay.view.App",

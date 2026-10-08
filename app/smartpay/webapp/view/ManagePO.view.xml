@@ -60,7 +60,7 @@
           </VBox>
           <VBox>
             <sfi:SmartLabel labelFor="fSupplier"/>
-            <sfi:SmartField id="fSupplier" value="{supplier_ID}" contextEditable="{ui>/edit}"
+            <sfi:SmartField id="fSupplier" value="{supplier_ID}" contextEditable="{ui>/edit}"  textInEditModeSource="ValueList"
               innerControlsCreated=".onSupplierInner"/>
           </VBox>
           <VBox>
@@ -121,7 +121,7 @@
           <Button text="Import" type="Transparent" press=".onImport" enabled="{= !${ui>/locked}}">
             <layoutData><OverflowToolbarLayoutData priority="Low"/></layoutData>
           </Button>
-          <Button icon="sap-icon://overflow" type="Transparent" press=".onOverflow">
+          <Button  text="Download Template" type="Transparent" press=".onOverflow">
             <layoutData><OverflowToolbarLayoutData priority="Low"/></layoutData>
           </Button>
         </OverflowToolbar>
@@ -165,8 +165,8 @@
 
         <!-- SAVED PO: SmartTable. Its generated columns (Line, Material, Description, UOM,
              Delivery Date, Plant) get their importance from @UI.Importance in the annotations. -->
-        <st:SmartTable id="lineTable" entitySet="POLines" tableBindingPath="lines" tableType="ResponsiveTable"
-          visible="{= !${ui>/isNew}}" useExportToExcel="false"
+               <st:SmartTable id="lineTable" entitySet="POLines" tableBindingPath="lines" tableType="ResponsiveTable"
+          visible="{= !${ui>/isNew}}" enableExport="true"
           enableAutoBinding="true" useVariantManagement="false" useTablePersonalisation="false" showRowCount="false"
           requestAtLeastFields="ID,po_ID,taxRate,lineNumber">
           <Table popinLayout="GridSmall" contextualWidth="Auto" updateFinished=".onLinesUpdated">

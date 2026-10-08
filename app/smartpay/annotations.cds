@@ -12,6 +12,7 @@ annotate m.PurchaseOrders with {
       {$Type:'Common.ValueListParameterOut',LocalDataProperty:supplierExtId,ValueListProperty:'sourceSupplierId'},
       {$Type:'Common.ValueListParameterOut',LocalDataProperty:currency_code,ValueListProperty:'defaultCurrency'},
       {$Type:'Common.ValueListParameterDisplayOnly',ValueListProperty:'legalName'}]};
+      
   company       @title:'Company Code' @Common.Text:company.companyCode @Common.TextArrangement:#TextOnly
     @Common.ValueListWithFixedValues @Common.FieldControl:#Mandatory
     @Common.ValueList:{ CollectionPath:'Companies', Parameters:[
