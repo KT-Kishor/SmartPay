@@ -405,7 +405,9 @@ sap.ui.define([
       // UI5 router: query parameters are passed under the "?query" key
       this.getOwnerComponent().getRouter().navTo("viewPO", { "?query": { poId: this._poId } });
     },
-
+onGoToViewPO: function () {
+  this.getOwnerComponent().getRouter().navTo("viewPO");
+},
     onPreview: function () {
       Messaging.removeAllMessages();
       this._call("previewPO", this._poId).then(() => {

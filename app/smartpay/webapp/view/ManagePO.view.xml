@@ -9,6 +9,12 @@
       <FlexBox wrap="Wrap" alignItems="Center" justifyContent="SpaceBetween" renderType="Div"
         class="sapUiSmallMarginBeginEnd sapUiSmallMarginTop">
         <VBox class="sapUiTinyMarginBottom">
+        <Button
+    id="viewPOBtn"
+    text="View POs"
+    icon="sap-icon://nav-back"
+    type="Transparent"
+    press=".onGoToViewPO" />
           <layoutData><FlexItemData growFactor="1" baseSize="16rem"/></layoutData>
           <Title text="Manage PO" level="H3" titleStyle="H3" wrapping="true"/>
           <Text text="Create purchase orders, manage header and line item details, and send POs to suppliers."/>
@@ -108,7 +114,7 @@
           </VBox>
         </cg:CSSGrid>
       </Panel>
-      
+
       <Panel class="sapUiResponsiveMargin" width="auto">
         <OverflowToolbar design="Transparent">
           <Title text="Line Items ({ui>/lineCount})"/>

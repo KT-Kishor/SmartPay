@@ -6,7 +6,7 @@ sap.ui.define([
   "use strict";
   return Controller.extend("smartpay.invoice.smartpay.controller.ViewPO", {
     formatter: formatter,
-
+    
     onInit: function () {
       const v = this.getView();
       v.setModel(this.getOwnerComponent().getModel("viewService"));
