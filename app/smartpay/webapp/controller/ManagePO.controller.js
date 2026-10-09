@@ -7,8 +7,9 @@ sap.ui.define([
   "sap/m/MessageBox",
   "sap/ui/core/Fragment",
   "sap/ui/core/format/DateFormat",
-  "smartpay/invoice/smartpay/model/formatter"
-], function (Controller, JSONModel, Filter, Messaging, MessageToast, MessageBox, Fragment, DateFormat, formatter) {
+  "smartpay/invoice/smartpay/model/formatter",
+  "smartpay/invoice/smartpay/model/POImport"
+], function (Controller, JSONModel, Filter, Messaging, MessageToast, MessageBox, Fragment, DateFormat, formatter, POImport) {
   "use strict";
   const STEPS = [
     ["CREATED", "PO Created"],
@@ -27,16 +28,18 @@ sap.ui.define([
   const DRAFT_GROUP = "draftLines";
   // deferred change group for Excel import into a saved PO (one changeset = all or nothing)
   const IMPORT_GROUP = "importLines";
+  // deferred change group for creating a PO header during a multi-PO import
+  const IMPORT_HDR_GROUP = "importHeaders";
 
-  // Excel template columns (header names must match exactly)
+  // "PO Lines" sheet columns (header names must match exactly)
   const IMPORT_COLS = [
-    "Material Code", "Description", "Quantity", "UOM",
+    "PO Ref", "Line Number", "Material Code", "Description", "Quantity", "UOM",
     "Unit Price", "Delivery Date", "Plant", "Tax %"
   ];
 
-  // optional "PO Header" sheet: one row, any column may stay empty
+  // "PO Header" sheet: one row per PO; PO Ref links the lines to it
   const HEADER_COLS = [
-    "Supplier", "Company Code", "Purchasing Org", "PO Date", "Currency",
+    "PO Ref", "Supplier", "Company Code", "Purchasing Org", "PO Date", "Currency",
     "Payment Terms", "Delivery Date", "Ship-To Location", "Buyer", "PO Type"
   ];
 
@@ -66,7 +69,7 @@ sap.ui.define([
       this._plants = {};
 
       const m0 = this.getOwnerComponent().getModel();
-      [DRAFT_GROUP, IMPORT_GROUP].forEach((g) => {
+      [DRAFT_GROUP, IMPORT_GROUP, IMPORT_HDR_GROUP].forEach((g) => {
         if (m0.getDeferredGroups().indexOf(g) < 0) {
           m0.setDeferredGroups(m0.getDeferredGroups().concat([g]));
         }
@@ -326,7 +329,7 @@ sap.ui.define([
         sub += val;
         tax += Math.round(val * t) / 100;
         return {
-          lineNumber: (i + 1) * 10,
+          lineNumber: o.lineNumber || (i + 1) * 10,
           materialCode: o.materialCode || "",
           description: o.description || "",
           orderedQuantity: q,
@@ -544,18 +547,30 @@ sap.ui.define([
     },
 
     // =========================================================
-    // IMPORT FROM EXCEL (header + lines)
-    // Sheet "PO Lines" (or the first sheet): line rows.
-    // Sheet "PO Header" (optional): one row; empty cells leave the field unchanged.
-    // Values go through the normal model, so ALL validation comes from the
-    // CAP service (annotations + before handlers), exactly like typing them.
+    // IMPORT FROM EXCEL - LINE ITEMS ONLY (sheet "PO Lines")
+    // A "PO Header" sheet is ignored; header + lines are imported on the View PO page.
+    // Duplicate = same Material / Service + Delivery Date + Plant / Location as a line
+    // already on this PO (or earlier in the file): not imported, listed in a message.
+    // If any one of the three differs, the line is imported.
     // =========================================================
 
+    _imp: function () {
+      if (!this._poImport) { this._poImport = new POImport(this._m()); }
+      return this._poImport;
+    },
+
+    _showErrors: function (errs) {
+      MessageBox.error(errs.slice(0, 15).join("\n") + (errs.length > 15 ? "\n…" : ""));
+    },
+
+    _showSkipped: function (skipped) {
+      if (!skipped.length) { return; }
+      MessageBox.warning("These line items were not imported:\n" +
+        skipped.slice(0, 15).join("\n") + (skipped.length > 15 ? "\n…" : ""));
+    },
+
     onDownloadTemplate: function () {
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([IMPORT_COLS]), "PO Lines");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([HEADER_COLS]), "PO Header");
-      XLSX.writeFile(wb, "PO_Template.xlsx");
+      this._imp().downloadTemplate(false);
     },
 
     onOverflow: function () {
@@ -567,200 +582,52 @@ sap.ui.define([
         MessageToast.show("PO is locked after sending");
         return;
       }
-      const inp = document.createElement("input");
-      inp.type = "file";
-      inp.accept = ".xlsx,.xls";
-      inp.onchange = () => { if (inp.files[0]) { this._readFile(inp.files[0]); } };
-      inp.click();
+      const imp = this._imp();
+      imp.pickFile()
+        .then((file) => imp.readFile(file))
+        .then((data) => {
+          if (!data.rows.length) { MessageBox.error("The file has no line items."); return; }
+          return this._importLines(data.rows, data.hdrs.length ? " (PO Header sheet ignored)" : "");
+        })
+        .catch(() => MessageBox.error("The file could not be read. Please use the template."));
     },
 
-    _readFile: function (file) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        try {
-          const wb = XLSX.read(ev.target.result, { type: "array", cellDates: true });
-          const toRows = (n) => XLSX.utils.sheet_to_json(wb.Sheets[n], { defval: "" });
-
-          const linesName = wb.SheetNames.find(n => n.trim().toLowerCase() === "po lines")
-            || wb.SheetNames.find(n => n.trim().toLowerCase() !== "po header");
-          const hdrName = wb.SheetNames.find(n => n.trim().toLowerCase() === "po header");
-
-          const rows = linesName ? toRows(linesName) : [];
-          const hdrRows = hdrName ? toRows(hdrName) : [];
-          // keep the header row only if at least one cell is filled
-          const hdr = hdrRows[0] && Object.keys(hdrRows[0]).some(k => String(hdrRows[0][k]).trim() !== "")
-            ? hdrRows[0] : null;
-
-          if (!rows.length && !hdr) { MessageBox.error("The file has no data rows."); return; }
-          this._importRows(rows, hdr);
-        } catch (e) {
-          MessageBox.error("The file could not be read. Please use the template.");
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    },
-
-    _readAll: function (path, filters) {
-      return new Promise((res, rej) => this._m().read(path, {
-        filters: filters,
-        urlParameters: { "$top": "5000" },
-        success: (d) => res(d.results),
-        error: rej
-      }));
-    },
-
-    _toUtcDate: function (v) {
-      if (v instanceof Date) {
-        return isNaN(v) ? null : new Date(Date.UTC(v.getFullYear(), v.getMonth(), v.getDate()));
-      }
-      const d = new Date(v);
-      return isNaN(d) ? null : new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-    },
-
-    // header texts in Excel -> keys. Mapping problems go into errs; business rules stay in CAP.
-    _resolveHeader: async function (h, errs) {
-      const txt = (k) => (h[k] === undefined || h[k] === null) ? "" : String(h[k]).trim();
-      const same = (a, b) => String(a || "").trim().toLowerCase() === b.toLowerCase();
-      const props = {};
-      const out = { props: props, supplierExtId: null };
-
-      const [sups, comps, orgs, terms, ships, buyers, types] = await Promise.all([
-        txt("Supplier") ? this._readAll("/Suppliers") : [],
-        txt("Company Code") ? this._readAll("/Companies") : [],
-        txt("Purchasing Org") ? this._readAll("/PurchasingOrgs") : [],
-        txt("Payment Terms") ? this._readAll("/PaymentTerms") : [],
-        txt("Ship-To Location") ? this._readAll("/ShipToLocations") : [],
-        txt("Buyer") ? this._readAll("/Buyers") : [],
-        txt("PO Type") ? this._readAll("/POTypes") : []
-      ]);
-
-      const pick = (col, list, test, apply) => {
-        const val = txt(col);
-        if (!val) { return; }
-        const hit = list.find(x => test(x, val));
-        if (hit) { apply(hit); } else { errs.push(`Header: unknown ${col} "${val}"`); }
-      };
-
-      let supCurrency = null;
-      pick("Supplier", sups, (x, v) => same(x.legalName, v) || same(x.sourceSupplierId, v), (x) => {
-        props.supplier_ID = x.ID;
-        out.supplierExtId = x.sourceSupplierId;
-        supCurrency = x.defaultCurrency;
-      });
-      pick("Company Code", comps, (x, v) => same(x.companyCode, v), (x) => { props.company_ID = x.ID; });
-      pick("Purchasing Org", orgs, (x, v) => same(x.orgCode, v), (x) => { props.purchasingOrg_ID = x.ID; });
-      pick("Payment Terms", terms, (x, v) => same(x.code, v) || same(x.description, v), (x) => { props.paymentTerm_code = x.code; });
-      pick("Ship-To Location", ships, (x, v) => same(x.locationName, v), (x) => { props.shipTo_ID = x.ID; });
-      pick("Buyer", buyers, (x, v) => same(x.userName, v), (x) => { props.buyer_ID = x.ID; });
-      pick("PO Type", types, (x, v) => same(x.code, v) || same(x.name, v), (x) => { props.poType_code = x.code; });
-
-      const cur = txt("Currency").toUpperCase();
-      if (cur) { props.currency_code = cur; }
-      else if (supCurrency) { props.currency_code = supCurrency; }
-
-      [["PO Date", "poDate"], ["Delivery Date", "deliveryDate"]].forEach(([col, prop]) => {
-        if (txt(col) === "") { return; }
-        const d = this._toUtcDate(h[col]);
-        if (d) { props[prop] = d; } else { errs.push(`Header: invalid ${col}`); }
-      });
-
-      return out;
-    },
-
-    // new PO: fill the form (checked by CAP on Save Draft); saved PO: save the header first
-    _applyHeader: async function (hdr) {
-      const m = this._m();
-      const ctx = this.getView().getBindingContext();
-      if (!ctx) { return true; }
-      const p = ctx.getPath();
-
-      Object.keys(hdr.props).forEach((k) => m.setProperty(p + "/" + k, hdr.props[k]));
-
-      if (!this._poId) {
-        if (hdr.supplierExtId !== null) { m.setProperty(p + "/supplierExtId", hdr.supplierExtId); }
-        this._ui({ edit: true });
-        return true;
-      }
-
-      try {
-        await this._submit();                               
-        return true;
-      } catch (e) {
-        m.resetChanges([p], true);
-        this._fail(e);                                      
-        return false;
-      }
-    },
-
-    _importRows: async function (rows, hdrRow) {
+    _importLines: async function (rows, note) {
       const v = this.getView();
       const m = this._m();
+      const imp = this._imp();
       v.setBusy(true);
       Messaging.removeAllMessages();
 
       try {
         const errs = [];
-        const hdr = hdrRow ? await this._resolveHeader(hdrRow, errs) : null;
+        const skipped = [];
+        let entries = await imp.buildLines(rows, errs);
 
-        // lines: materials (defaults) + plants (name -> ID), same data the value helps use
-        let entries = [];
-        if (rows.length) {
-          const codes = [...new Set(rows.map(r => String(r["Material Code"]).trim()).filter(Boolean))];
-          const [mats, plants] = await Promise.all([
-            codes.length
-              ? this._readAll("/Materials", [new Filter({
-                  filters: codes.map(c => new Filter("materialCode", "EQ", c)), and: false })])
-              : Promise.resolve([]),
-            this._readAll("/PlantLocations")
-          ]);
+        if (errs.length) { v.setBusy(false); this._showErrors(errs); return; }   // nothing is imported
 
-          entries = rows.map((r, i) => {
-            const n = i + 2;                                 // Excel row number
-            const code = String(r["Material Code"]).trim();
-            const mat = mats.find(x => x.materialCode === code);
-            if (!mat) { errs.push(`Row ${n}: unknown material "${code}"`); }
-
-            const pName = String(r["Plant"]).trim();
-            const plant = plants.find(x => x.locationName === pName);
-            if (pName && !plant) { errs.push(`Row ${n}: unknown plant "${pName}"`); }
-
-            const dd = r["Delivery Date"] === "" ? null : this._toUtcDate(r["Delivery Date"]);
-            if (r["Delivery Date"] !== "" && !dd) { errs.push(`Row ${n}: invalid delivery date`); }
-
-            const qty = r["Quantity"], price = r["Unit Price"];
-            return {
-              materialCode: code,
-              description: r["Description"] || (mat && mat.description) || "",
-              orderedQuantity: String(qty),
-              uom_code: String(r["UOM"] || (mat && mat.defaultUom_code) || ""),
-              unitPrice: String(price === "" && mat ? mat.standardPrice : price),
-              deliveryDate: dd,
-              plant_ID: plant ? plant.ID : null,
-              taxRate: String(r["Tax %"] === "" ? 8 : r["Tax %"])
-            };
+        // lines that already exist: saved PO -> HANA, unsaved PO -> lines waiting for Save Draft
+        let taken;
+        if (this._poId) {
+          taken = await imp.existingKeys(this._poId);
+        } else {
+          taken = new Set();
+          this._draftCtxs.forEach((c) => {
+            const o = c.getObject() || {};
+            taken.add(POImport.key(o.materialCode, o.deliveryDate, o.plant_ID));
           });
         }
+        entries = imp.dropDuplicates(entries, taken, skipped, "");
 
-        if (errs.length) {                                   // nothing is changed if any mapping fails
+        if (!entries.length) {                               // every row was a duplicate
           v.setBusy(false);
-          MessageBox.error(errs.slice(0, 15).join("\n") + (errs.length > 15 ? "\n…" : ""));
-          return;
-        }
-
-        if (hdr) {
-          if (!(await this._applyHeader(hdr))) { return; }   // _applyHeader already reported the error
-        }
-
-        if (!entries.length) {                               // header-only file
-          v.setBusy(false);
-          if (this._poId) { this._reload(); } else { this._syncDraft(); }
-          MessageToast.show(this._poId ? "Header saved" : "Header filled. Save Draft to validate and store it.");
+          this._showSkipped(skipped);
           return;
         }
 
         const saved = !!this._poId;
         const ctxs = entries.map((e) => {
-          const props = Object.assign({}, e);
+          const props = Object.assign({}, e.props);
           if (saved) { props.po_ID = this._poId; }
           const opts = { properties: props, groupId: saved ? IMPORT_GROUP : DRAFT_GROUP };
           if (saved) { opts.changeSetId = "importChangeSet"; }
@@ -768,21 +635,23 @@ sap.ui.define([
         });
 
         if (!saved) {                                        // validated by CAP on Save Draft
-          ctxs.forEach(c => this._draftCtxs.push(c));
+          ctxs.forEach((c) => this._draftCtxs.push(c));
           this._syncDraft();
           v.setBusy(false);
-          MessageToast.show(`${ctxs.length} line(s)${hdr ? " and header" : ""} added. Save Draft to validate and store them.`);
+          MessageToast.show(`${ctxs.length} line(s) added. Save Draft to validate and store them.${note}`);
+          this._showSkipped(skipped);
           return;
         }
 
         try {
           await this._submit(IMPORT_GROUP);                  // one changeset: all or nothing
           v.setBusy(false);
-          MessageToast.show(`${ctxs.length} line(s) imported${hdr ? " and header saved" : ""}`);
+          MessageToast.show(`${ctxs.length} line(s) imported${note}`);
           this._refreshLines();
           this._reload();
+          this._showSkipped(skipped);
         } catch (e) {
-          ctxs.forEach(c => m.deleteCreatedEntry(c));        // nothing half-imported on screen
+          ctxs.forEach((c) => m.deleteCreatedEntry(c));      // nothing half-imported on screen
           this._fail(e);                                     // CAP messages -> message popover
         }
       } catch (e) {

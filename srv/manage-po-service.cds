@@ -36,9 +36,11 @@ annotate ManagePOService.PurchaseOrders with {
 };
 annotate ManagePOService.POLines with {
   // server-owned values
-  lineNumber @readonly; lineValue @readonly; taxAmount @readonly;
+  lineValue @readonly; taxAmount @readonly;
   openQuantity @readonly; openValue @readonly;
   receivedQuantity @readonly; invoicedQuantity @readonly;
+
+ 
   // standard validation: applies to Save Line, Excel import and direct API calls
   materialCode    @mandatory;
   description     @mandatory;

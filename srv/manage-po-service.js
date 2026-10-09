@@ -168,7 +168,6 @@ module.exports = class ManagePOService extends cds.ApplicationService {
     // ---------------------------------------------------------
     // PO LINES
     // ---------------------------------------------------------
-
     this.before('CREATE', POLines, async req => {
       const d = req.data || {};
       const poId = d.po_ID || d.poId;
@@ -181,10 +180,33 @@ module.exports = class ManagePOService extends cds.ApplicationService {
 
       await assertEditable(poId, req);
 
-      const row = await run(req,
-        SELECT.one.from(db.PO_LINE).columns('max(lineNumber) as max').where({ po_ID: poId })
-      );
-      d.lineNumber = ((row && row.max) || 0) + 10;
+      // same Material / Service + Delivery Date + Plant / Location already on this PO
+      const dup = await run(req, SELECT.one.from(db.PO_LINE).columns('ID').where({
+        po_ID: poId,
+        materialCode: d.materialCode,
+        deliveryDate: d.deliveryDate || null,
+        plant_ID: d.plant_ID || null
+      }));
+      if (dup) {
+        return req.reject(400,
+          `This line item already exists on the PO (same Material / Service, Delivery Date and Plant / Location): ${d.materialCode}, ${d.deliveryDate || 'no date'}`);
+      }
+
+      const given = d.lineNumber;
+      if (given !== undefined && given !== null && given !== '') {
+        const n = Number(given);
+        if (!Number.isInteger(n) || n <= 0) {
+          return req.reject(400, `Line number "${given}" is invalid. Use a whole number greater than 0`);
+        }
+        const same = await run(req,
+          SELECT.one.from(db.PO_LINE).columns('ID').where({ po_ID: poId, lineNumber: n }));
+        if (same) { return req.reject(400, `Line number ${n} already exists for this PO`); }
+        d.lineNumber = n;
+      } else {
+        const row = await run(req,
+          SELECT.one.from(db.PO_LINE).columns('max(lineNumber) as max').where({ po_ID: poId }));
+        d.lineNumber = ((row && row.max) || 0) + 10;
+      }
 
       fill(d, req);
     });
@@ -195,6 +217,14 @@ module.exports = class ManagePOService extends cds.ApplicationService {
 
       await assertEditable(cur.po_ID, req);
       req._poId = cur.po_ID;
+
+      const ln = req.data.lineNumber;
+      if (ln !== undefined && ln !== null && Number(ln) !== Number(cur.lineNumber)) {
+        const dup = await run(req,
+          SELECT.one.from(db.PO_LINE).columns('ID').where({ po_ID: cur.po_ID, lineNumber: Number(ln) })
+        );
+        if (dup) { return req.reject(400, `Line number ${ln} already exists for this PO`); }
+      }
 
       const m = { ...cur, ...req.data };
       fill(m, req);

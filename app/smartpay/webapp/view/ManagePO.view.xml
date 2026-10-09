@@ -40,7 +40,7 @@
       <!-- PO Header Details: columns reflow automatically (1 column on phone, up to 4 on desktop) -->
       <Panel class="sapUiResponsiveMargin" width="auto">
         <headerToolbar>
-          <OverflowToolbar>
+          <OverflowToolbar> 
             <Title text="PO Header Details"/>
             <core:Icon src="sap-icon://hint"/>
             <ToolbarSpacer/>
@@ -108,7 +108,7 @@
           </VBox>
         </cg:CSSGrid>
       </Panel>
-
+      
       <Panel class="sapUiResponsiveMargin" width="auto">
         <OverflowToolbar design="Transparent">
           <Title text="Line Items ({ui>/lineCount})"/>

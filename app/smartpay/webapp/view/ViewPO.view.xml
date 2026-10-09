@@ -41,6 +41,7 @@
               <Title text="Purchase Orders Received" level="H4" titleStyle="H4"/>
               <ToolbarSpacer/>
               <Text text="{ui>/countText}"/>
+              <Button text="Import" type="Transparent" press=".onImport"/>
               <Button text="Create"  type="Transparent" press=".onCreate"/>
             </OverflowToolbar>
           </st:customToolbar>
